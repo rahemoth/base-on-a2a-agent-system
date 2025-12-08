@@ -2,6 +2,7 @@
 A2A Agent implementation using Google's Agent-to-Agent protocol
 """
 import asyncio
+import json
 import uuid
 from typing import Optional, Dict, Any, List, AsyncGenerator
 from datetime import datetime
@@ -11,6 +12,14 @@ from openai import AsyncOpenAI
 
 from backend.models import AgentConfig, AgentStatus, Message, MessageRole, ModelProvider
 from backend.mcp import mcp_manager
+
+
+# Role mapping for OpenAI API
+ROLE_MAPPING = {
+    MessageRole.USER: "user",
+    MessageRole.AGENT: "assistant",
+    MessageRole.SYSTEM: "system"
+}
 
 
 class A2AAgent:
@@ -240,7 +249,7 @@ class A2AAgent:
         # Add context if provided
         if context:
             for msg in context:
-                role = "assistant" if msg.role == MessageRole.AGENT else msg.role.value
+                role = ROLE_MAPPING.get(msg.role, msg.role.value)
                 messages.append({
                     "role": role,
                     "content": msg.content
@@ -315,13 +324,16 @@ class A2AAgent:
                 # Add tool results
                 messages.extend(tool_messages)
                 
-                # Get final response
-                response = await self.openai_client.chat.completions.create(
-                    model=self.config.model,
-                    messages=messages,
-                    temperature=self.config.temperature,
-                    max_tokens=self.config.max_tokens
-                )
+                # Get final response (reuse config from kwargs)
+                final_kwargs = {
+                    "model": self.config.model,
+                    "messages": messages,
+                    "temperature": self.config.temperature,
+                }
+                if self.config.max_tokens:
+                    final_kwargs["max_tokens"] = self.config.max_tokens
+                
+                response = await self.openai_client.chat.completions.create(**final_kwargs)
             
             result = response.choices[0].message.content
             
@@ -366,10 +378,12 @@ class A2AAgent:
     async def _execute_tool_openai(self, tool_call: Any) -> Dict[str, Any]:
         """Execute a tool call via MCP (OpenAI format)"""
         try:
-            import json
             # Parse server name and tool name
             full_name = tool_call.function.name
-            server_name, tool_name = full_name.split('_', 1)
+            parts = full_name.split('_', 1)
+            if len(parts) != 2:
+                raise ValueError(f"Invalid tool name format: {full_name}. Expected 'server_toolname'")
+            server_name, tool_name = parts
             
             # Parse arguments
             arguments = json.loads(tool_call.function.arguments)
