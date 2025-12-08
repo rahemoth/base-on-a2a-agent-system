@@ -1,0 +1,23 @@
+# Core dependencies
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+
+# A2A SDK and related
+google-genai>=0.2.0
+
+# MCP support
+mcp>=1.23.0
+
+# Async support
+aiohttp>=3.9.0
+
+# Database
+sqlalchemy>=2.0.0
+aiosqlite>=0.19.0
+
+# Utilities
+python-dotenv>=1.0.0
+python-multipart>=0.0.6
+pyyaml>=6.0
