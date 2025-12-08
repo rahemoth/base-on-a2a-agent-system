@@ -73,7 +73,7 @@ class A2AAgent:
         message: str,
         context: Optional[List[Message]] = None,
         stream: bool = False
-    ) -> AsyncGenerator[str, None] if stream else str:
+    ):
         """Send a message to the agent"""
         if not self.client:
             raise RuntimeError("Agent not initialized")
@@ -112,16 +112,19 @@ class A2AAgent:
             
             # Generate response
             if stream:
-                response = await self.client.aio.models.generate_content_stream(
-                    model=self.config.model,
-                    contents=contents,
-                    config=config,
-                    tools=tools if tools else None
-                )
+                async def stream_response():
+                    response = await self.client.aio.models.generate_content_stream(
+                        model=self.config.model,
+                        contents=contents,
+                        config=config,
+                        tools=tools if tools else None
+                    )
+                    
+                    async for chunk in response:
+                        if chunk.text:
+                            yield chunk.text
                 
-                async for chunk in response:
-                    if chunk.text:
-                        yield chunk.text
+                return stream_response()
             else:
                 response = await self.client.aio.models.generate_content(
                     model=self.config.model,
