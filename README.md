@@ -168,12 +168,39 @@ OPENAI_API_KEY=your_openai_api_key_here
 
 # Optional
 ANTHROPIC_API_KEY=your_anthropic_api_key_here
+
+# OpenAI Configuration (Optional)
+# Use this to connect to OpenAI-compatible APIs like LM Studio, LocalAI, etc.
+# If not set, uses official OpenAI API endpoint
+OPENAI_BASE_URL=http://localhost:1234/v1
+
 HOST=0.0.0.0
 PORT=8000
 DEBUG=true
 DATABASE_URL=sqlite+aiosqlite:///./agents.db
 ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
 ```
+
+### Using OpenAI-Compatible APIs (LM Studio, LocalAI, etc.)
+
+The system supports any OpenAI-compatible API endpoint. To use local models with LM Studio:
+
+1. **Start LM Studio** and load a model
+2. **Enable the local server** in LM Studio (usually runs on `http://localhost:1234`)
+3. **Configure your `.env` file**:
+   ```env
+   OPENAI_API_KEY=lm-studio  # Can be any string when using local models
+   OPENAI_BASE_URL=http://localhost:1234/v1
+   ```
+4. **Create an agent** with `provider: "openai"` and use any model name supported by your LM Studio setup
+
+**Supported OpenAI-Compatible Platforms:**
+- LM Studio
+- LocalAI
+- Ollama (with OpenAI compatibility layer)
+- Text Generation WebUI (with OpenAI extension)
+- vLLM
+- Any other service implementing OpenAI's API format
 
 ### Agent Configuration Schema
 

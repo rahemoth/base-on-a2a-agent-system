@@ -34,7 +34,7 @@ class A2AAgent:
         self.conversation_history: List[Message] = []
         self.mcp_client = None
         
-    async def initialize(self, google_api_key: Optional[str] = None, openai_api_key: Optional[str] = None):
+    async def initialize(self, google_api_key: Optional[str] = None, openai_api_key: Optional[str] = None, openai_base_url: Optional[str] = None):
         """Initialize the agent with appropriate client based on provider"""
         try:
             if self.config.provider == ModelProvider.GOOGLE:
@@ -44,7 +44,11 @@ class A2AAgent:
             elif self.config.provider == ModelProvider.OPENAI:
                 if not openai_api_key:
                     raise ValueError("OpenAI API key not configured")
-                self.openai_client = AsyncOpenAI(api_key=openai_api_key)
+                # Support custom base URLs for OpenAI-compatible APIs (e.g., LM Studio)
+                if openai_base_url:
+                    self.openai_client = AsyncOpenAI(api_key=openai_api_key, base_url=openai_base_url)
+                else:
+                    self.openai_client = AsyncOpenAI(api_key=openai_api_key)
             else:
                 raise ValueError(f"Unsupported provider: {self.config.provider}")
             

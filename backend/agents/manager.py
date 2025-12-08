@@ -24,8 +24,13 @@ class AgentManager:
         # Initialize agent with appropriate API key(s)
         google_api_key = settings.google_api_key
         openai_api_key = settings.openai_api_key
+        openai_base_url = settings.openai_base_url
         
-        await agent.initialize(google_api_key=google_api_key, openai_api_key=openai_api_key)
+        await agent.initialize(
+            google_api_key=google_api_key,
+            openai_api_key=openai_api_key,
+            openai_base_url=openai_base_url
+        )
         self.agents[agent_id] = agent
         
         return AgentResponse(
@@ -65,7 +70,12 @@ class AgentManager:
         # Reinitialize with both API keys
         google_api_key = settings.google_api_key
         openai_api_key = settings.openai_api_key
-        await agent.initialize(google_api_key=google_api_key, openai_api_key=openai_api_key)
+        openai_base_url = settings.openai_base_url
+        await agent.initialize(
+            google_api_key=google_api_key,
+            openai_api_key=openai_api_key,
+            openai_base_url=openai_base_url
+        )
         
         return AgentResponse(
             id=agent_id,
