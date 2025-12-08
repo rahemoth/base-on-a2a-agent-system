@@ -7,7 +7,9 @@ A sophisticated multi-agent collaboration system built on Google's A2A (Agent-to
 🤖 **Multi-Agent System**
 - Create and manage multiple AI agents
 - Based on Google's A2A protocol
-- Support for various Gemini models (2.0 Flash, 1.5 Pro, 1.5 Flash)
+- Support for various AI models:
+  - **Google Gemini**: 2.0 Flash, 1.5 Pro, 1.5 Flash
+  - **OpenAI GPT**: GPT-4, GPT-4 Turbo, GPT-4o, GPT-3.5 Turbo
 - Customizable agent configurations
 
 🔧 **MCP Integration**
@@ -47,7 +49,7 @@ A sophisticated multi-agent collaboration system built on Google's A2A (Agent-to
 ### Prerequisites
 - Python 3.10+
 - Node.js 18+
-- Google API Key (for Gemini models)
+- Google API Key (for Gemini models) and/or OpenAI API Key (for GPT models)
 
 ### Installation
 
@@ -64,7 +66,7 @@ pip install -r requirements.txt
 
 # Create environment file
 cp .env.example .env
-# Edit .env and add your GOOGLE_API_KEY
+# Edit .env and add your GOOGLE_API_KEY and/or OPENAI_API_KEY
 ```
 
 3. **Set up the frontend**
@@ -101,7 +103,8 @@ The backend API documentation is available at: `http://localhost:8000/docs`
 2. Fill in the agent configuration:
    - **Name**: Give your agent a descriptive name
    - **Description**: Describe the agent's purpose
-   - **Model**: Choose a Gemini model
+   - **Provider**: Choose between Google (Gemini) or OpenAI (GPT)
+   - **Model**: Choose a model from the selected provider
    - **System Prompt**: Define the agent's behavior and personality
    - **Temperature**: Control randomness (0.0 - 2.0)
    - **Max Tokens**: Set output length limit (optional)
@@ -159,8 +162,9 @@ curl -X POST http://localhost:8000/api/agents/collaborate \
 Create a `.env` file in the root directory:
 
 ```env
-# Required
+# Required (at least one)
 GOOGLE_API_KEY=your_google_api_key_here
+OPENAI_API_KEY=your_openai_api_key_here
 
 # Optional
 ANTHROPIC_API_KEY=your_anthropic_api_key_here
@@ -177,6 +181,7 @@ ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
 {
   "name": "string",
   "description": "string",
+  "provider": "google",
   "model": "gemini-2.0-flash-exp",
   "system_prompt": "string",
   "temperature": 0.7,
@@ -260,9 +265,9 @@ The built frontend will be in `frontend/dist` and can be served by the backend a
 
 ## Technologies Used
 
-- **Backend**: Python, FastAPI, Google GenAI SDK, MCP, SQLAlchemy
+- **Backend**: Python, FastAPI, Google GenAI SDK, OpenAI SDK, MCP, SQLAlchemy
 - **Frontend**: React, Vite, Axios, Lucide Icons
-- **AI**: Google Gemini models, A2A protocol
+- **AI**: Google Gemini models, OpenAI GPT models, A2A protocol
 - **Protocol**: Model Context Protocol (MCP)
 
 ## Contributing

@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     # API Keys
     google_api_key: Optional[str] = None
     anthropic_api_key: Optional[str] = None
+    openai_api_key: Optional[str] = None
     
     # Server Configuration
     host: str = "0.0.0.0"

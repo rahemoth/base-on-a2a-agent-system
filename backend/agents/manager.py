@@ -21,12 +21,11 @@ class AgentManager:
         agent_id = str(uuid.uuid4())
         agent = A2AAgent(agent_id, config)
         
-        # Initialize agent with API key
-        api_key = settings.google_api_key
-        if not api_key:
-            raise ValueError("Google API key not configured")
+        # Initialize agent with appropriate API key(s)
+        google_api_key = settings.google_api_key
+        openai_api_key = settings.openai_api_key
         
-        await agent.initialize(api_key)
+        await agent.initialize(google_api_key=google_api_key, openai_api_key=openai_api_key)
         self.agents[agent_id] = agent
         
         return AgentResponse(
@@ -63,9 +62,10 @@ class AgentManager:
         # Update configuration
         agent.config = config
         
-        # Reinitialize if needed
-        api_key = settings.google_api_key
-        await agent.initialize(api_key)
+        # Reinitialize with both API keys
+        google_api_key = settings.google_api_key
+        openai_api_key = settings.openai_api_key
+        await agent.initialize(google_api_key=google_api_key, openai_api_key=openai_api_key)
         
         return AgentResponse(
             id=agent_id,

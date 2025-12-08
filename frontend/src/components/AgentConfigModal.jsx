@@ -6,6 +6,7 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
   const [config, setConfig] = useState(agent?.config || {
     name: '',
     description: '',
+    provider: 'google',
     model: 'gemini-2.0-flash-exp',
     system_prompt: '',
     temperature: 0.7,
@@ -79,14 +80,41 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
             </div>
 
             <div className="form-group">
+              <label>Provider *</label>
+              <select
+                value={config.provider}
+                onChange={(e) => {
+                  const provider = e.target.value;
+                  const defaultModel = provider === 'openai' ? 'gpt-4' : 'gemini-2.0-flash-exp';
+                  setConfig({ ...config, provider, model: defaultModel });
+                }}
+              >
+                <option value="google">Google (Gemini)</option>
+                <option value="openai">OpenAI (GPT)</option>
+              </select>
+            </div>
+
+            <div className="form-group">
               <label>Model *</label>
               <select
                 value={config.model}
                 onChange={(e) => setConfig({ ...config, model: e.target.value })}
               >
-                <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash</option>
-                <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
-                <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+                {config.provider === 'google' ? (
+                  <>
+                    <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash</option>
+                    <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+                    <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+                  </>
+                ) : (
+                  <>
+                    <option value="gpt-4">GPT-4</option>
+                    <option value="gpt-4-turbo">GPT-4 Turbo</option>
+                    <option value="gpt-4o">GPT-4o</option>
+                    <option value="gpt-4o-mini">GPT-4o Mini</option>
+                    <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                  </>
+                )}
               </select>
             </div>
 

@@ -7,6 +7,9 @@ pydantic-settings>=2.1.0
 # A2A SDK and related
 google-genai>=0.2.0
 
+# OpenAI support
+openai>=1.0.0
+
 # MCP support
 mcp>=1.23.0
 
