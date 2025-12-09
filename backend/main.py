@@ -7,9 +7,10 @@ from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 import os
 
-from backend.api import agents_router, mcp_router
+from backend.api import mcp_router
+from backend.api.agents_a2a import router as agents_router
 from backend.config import settings
-from backend.agents import agent_manager
+from backend.agents.a2a_manager import a2a_agent_manager
 from backend.mcp import mcp_manager
 
 
@@ -21,14 +22,14 @@ async def lifespan(app: FastAPI):
     yield
     # Shutdown
     print("Shutting down A2A Agent System...")
-    await agent_manager.cleanup_all()
+    await a2a_agent_manager.cleanup_all()
     await mcp_manager.close_all()
 
 
 app = FastAPI(
     title="A2A Multi-Agent Collaboration System",
-    description="A multi-agent collaboration system based on Google's A2A protocol with MCP support",
-    version="1.0.0",
+    description="A multi-agent collaboration system built with official A2A SDK and MCP support",
+    version="2.0.0",
     lifespan=lifespan
 )
 
@@ -51,7 +52,8 @@ async def root():
     """Root endpoint"""
     return {
         "message": "A2A Multi-Agent Collaboration System",
-        "version": "1.0.0",
+        "version": "2.0.0",
+        "a2a_sdk": "official a2a-sdk v0.3.20+",
         "docs": "/docs"
     }
 

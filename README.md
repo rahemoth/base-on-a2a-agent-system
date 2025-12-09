@@ -1,12 +1,13 @@
 # A2A Multi-Agent Collaboration System
 
-A sophisticated multi-agent collaboration system built on Google's A2A (Agent-to-Agent) protocol with Model Context Protocol (MCP) support and a beautiful, modern web interface.
+A sophisticated multi-agent collaboration system built with the **official A2A Python SDK** ([a2a-sdk](https://github.com/a2aproject/a2a-python)), implementing Google's Agent2Agent (A2A) protocol with Model Context Protocol (MCP) support and a beautiful, modern web interface.
 
 ## Features
 
 🤖 **Multi-Agent System**
 - Create and manage multiple AI agents
-- Based on Google's A2A protocol
+- **Built with official A2A SDK (a2a-sdk v0.3.20+)**
+- Full A2A protocol compliance
 - Support for various AI models:
   - **Google Gemini**: 2.0 Flash, 1.5 Pro, 1.5 Flash
   - **OpenAI GPT**: GPT-4, GPT-4 Turbo, GPT-4o, GPT-3.5 Turbo
@@ -20,9 +21,9 @@ A sophisticated multi-agent collaboration system built on Google's A2A (Agent-to
 
 💬 **Agent Communication**
 - Real-time chat with individual agents
-- Multi-agent collaboration on tasks
+- A2A protocol-compliant messaging
 - Conversation history tracking
-- Streaming responses
+- Support for streaming responses
 
 🎨 **Beautiful UI**
 - Modern, responsive design
@@ -33,8 +34,10 @@ A sophisticated multi-agent collaboration system built on Google's A2A (Agent-to
 ## Architecture
 
 ### Backend (Python/FastAPI)
+- **A2A SDK**: Official Python SDK for Agent2Agent protocol
 - **FastAPI**: High-performance async API server
-- **Google GenAI**: A2A protocol implementation
+- **Google GenAI**: LLM provider for Gemini models
+- **OpenAI**: LLM provider for GPT models
 - **MCP Client**: Model Context Protocol integration
 - **Pydantic**: Data validation and settings management
 
@@ -292,10 +295,10 @@ The built frontend will be in `frontend/dist` and can be served by the backend a
 
 ## Technologies Used
 
-- **Backend**: Python, FastAPI, Google GenAI SDK, OpenAI SDK, MCP, SQLAlchemy
+- **Backend**: Python, FastAPI, **A2A SDK (official)**, Google GenAI SDK, OpenAI SDK, MCP, SQLAlchemy
 - **Frontend**: React, Vite, Axios, Lucide Icons
-- **AI**: Google Gemini models, OpenAI GPT models, A2A protocol
-- **Protocol**: Model Context Protocol (MCP)
+- **AI**: Google Gemini models, OpenAI GPT models
+- **Protocols**: Agent2Agent (A2A) Protocol, Model Context Protocol (MCP)
 
 ## Contributing
 
@@ -311,7 +314,8 @@ For issues and questions, please open an issue on GitHub.
 
 ## Acknowledgments
 
-- Google's A2A (Agent-to-Agent) protocol
+- [A2A Project](https://a2a-protocol.org/) - Official Agent2Agent Protocol
+- [A2A Python SDK](https://github.com/a2aproject/a2a-python) - Official Python SDK
 - Model Context Protocol (MCP) community
 - FastAPI framework
 - React and Vite teams
