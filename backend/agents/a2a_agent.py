@@ -331,12 +331,18 @@ class A2AAgent:
         else:
             try:
                 logger.debug(f"Sending request to {self.config.provider.value} with model {self.config.model}")
-                logger.debug(f"API base URL: {getattr(self.openai_client, '_base_url', 'default')}")
+                # Get base URL for logging
+                base_url = getattr(self.openai_client, 'base_url', None)
+                if base_url:
+                    logger.debug(f"API base URL: {base_url}")
                 
                 response = await self.openai_client.chat.completions.create(**kwargs)
                 
                 if not response.choices:
                     raise RuntimeError("No response choices returned from API")
+                
+                if not response.choices[0].message:
+                    raise RuntimeError("No message in response")
                 
                 if not response.choices[0].message.content:
                     logger.warning(f"Empty content in response from {self.config.provider.value}")
