@@ -91,8 +91,7 @@ class LLMAgentExecutor(AgentExecutor):
                     context_id=message.context_id,
                     task_id=message.task_id
                 )
-                event_queue.enqueue_event(error_message)
-                event_queue.task_done()
+                await event_queue.enqueue_event(error_message)
                 return
             
             # Generate response using LLM
@@ -110,8 +109,7 @@ class LLMAgentExecutor(AgentExecutor):
                 task_id=message.task_id
             )
             
-            event_queue.enqueue_event(response_message)
-            event_queue.task_done()
+            await event_queue.enqueue_event(response_message)
             
         except Exception as e:
             # Handle errors
@@ -120,8 +118,7 @@ class LLMAgentExecutor(AgentExecutor):
                 context_id=request_context.message.context_id,
                 task_id=request_context.message.task_id
             )
-            event_queue.enqueue_event(error_message)
-            event_queue.task_done()
+            await event_queue.enqueue_event(error_message)
     
     async def cancel(self, task_id: str, reason: Optional[str] = None) -> None:
         """Cancel a running task (required by AgentExecutor interface)"""
