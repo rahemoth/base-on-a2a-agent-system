@@ -344,14 +344,17 @@ class A2AAgent:
                 if not response.choices[0].message:
                     raise RuntimeError("No message in response")
                 
-                if not response.choices[0].message.content:
-                    logger.warning(f"Empty content in response from {self.config.provider.value}")
-                    raise RuntimeError("Empty content in response")
-                
-                logger.debug(f"Received response: {response.choices[0].message.content[:100]}...")
-                
                 # Handle tool calls if present
                 message_obj = response.choices[0].message
+                
+                # Check for empty content only if there are no tool calls
+                if not message_obj.content and not message_obj.tool_calls:
+                    logger.warning(f"Empty content and no tool calls in response from {self.config.provider.value}")
+                    raise RuntimeError("Empty content in response with no tool calls")
+                
+                if message_obj.content:
+                    logger.debug(f"Received response: {message_obj.content[:100]}...")
+                
                 if message_obj.tool_calls:
                     # Execute tools and get responses
                     tool_messages = []

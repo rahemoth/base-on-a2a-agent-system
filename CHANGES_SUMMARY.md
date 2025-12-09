@@ -26,7 +26,9 @@ logger = logging.getLogger(__name__)
 async def _send_message_openai(self, message, context=None, stream=False):
     try:
         logger.debug(f"Sending request to {self.config.provider.value} with model {self.config.model}")
-        logger.debug(f"API base URL: {getattr(self.openai_client, '_base_url', 'default')}")
+        base_url = getattr(self.openai_client, 'base_url', None)
+        if base_url:
+            logger.debug(f"API base URL: {base_url}")
         
         response = await self.openai_client.chat.completions.create(**kwargs)
         
