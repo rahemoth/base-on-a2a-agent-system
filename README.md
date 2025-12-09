@@ -1,239 +1,217 @@
-# A2A Multi-Agent Collaboration System
+# 基于A2A协议的多agent协作系统
 
-A sophisticated multi-agent collaboration system built with the **official A2A Python SDK** ([a2a-sdk](https://github.com/a2aproject/a2a-python)), implementing Google's Agent2Agent (A2A) protocol with Model Context Protocol (MCP) support and a beautiful, modern web interface.
+一个使用**A2A Python SDK**（[a2a-sdk](https://github.com/a2aproject/a2a-python)）构建的复杂多agent协作系统，实现 Google 的 Agent2Agent (A2A) 协议，支持 Model Context Protocol (MCP）。
 
-## Features
+## 功能
 
-🤖 **Multi-Agent System**
-- Create and manage multiple AI agents
-- **Built with official A2A SDK (a2a-sdk v0.3.20+)**
-- Full A2A protocol compliance
-- Support for various AI providers:
-  - **Google Gemini**: 2.0 Flash, 1.5 Pro, 1.5 Flash (requires API key)
-  - **OpenAI GPT**: GPT-4, GPT-4 Turbo, GPT-4o, GPT-3.5 Turbo (requires API key)
-  - **Local LLMs** (no API key required):
-    - **LM Studio**: Easy-to-use local LLM server
-    - **LocalAI**: Self-hosted OpenAI-compatible API
-    - **Ollama**: Local LLM runner with simple setup
-    - **Text Generation WebUI**: Feature-rich web interface for local models
-    - **Custom**: Any OpenAI-compatible API endpoint
-- Customizable agent configurations
-- **Separate provider options for local models** - no need for API keys when using local LLMs
-- **Per-agent API key configuration** - different API keys for each cloud provider agent
-- **Per-agent API endpoint configuration** for flexible LLM server setups
+🤖 **多agent系统**
+- 创建和管理多个 AI agent
+- **使用 A2A SDK 构建 (a2a-sdk v0.3.20+)**
+- 符合 A2A 协议
+- 支持多种 AI 模型：
+  - **Google Gemini**：2.0 Flash、1.5 Pro、1.5 Flash
+  - **OpenAI GPT**：GPT-4、GPT-4 Turbo、GPT-4o、GPT-3.5 Turbo
+  - **本地大模型**：LM Studio、LocalAI、Ollama 等通过 OpenAI 兼容 API
+- 可自定义代理配置
+- **每个agent独立 API 密钥配置** - 不同代理使用不同密钥
+- **每个agent独立 API 端点配置** 以实现灵活的大模型服务器设置
 
-🤝 **Multi-Agent Collaboration (NEW!)**
-- **Interactive collaboration UI** for coordinating multiple agents
-- Select agents and define collaborative tasks through intuitive interface
-- Real-time visualization of agent discussions and contributions
-- Round-based collaboration with configurable iterations
-- Coordinator agent selection for managing collaboration flow
-- Complete conversation history with timestamps and metadata
-- Inspired by CrewAI's multi-agent patterns and A2A protocol standards
+🤝 **多agent协作**
+- **交互式协作界面** 用于协调多个agent
+- 通过直观界面选择agent并定义协作任务
+- 实时可视化agent讨论和贡献
+- 基于轮次的协作，支持配置迭代次数
+- 可选择协调者agent来管理协作流程
+- 完整的对话历史记录，带时间戳和元数据
+- 灵感来源于 CrewAI 的多代理模式和 A2A 协议标准
 
-🔧 **MCP Integration**
-- Full Model Context Protocol support
-- Connect agents to MCP servers
-- Access tools and resources from MCP servers
-- Seamless tool execution
+🔧 **MCP 集成**
+- 完整 Model Context Protocol 支持
+- 将agent连接到 MCP 服务器
+- 访问 MCP 服务器提供的工具和资源
+- 无缝工具执行
 
-💬 **Agent Communication**
-- Real-time chat with individual agents
-- A2A protocol-compliant messaging
-- Conversation history tracking
-- Support for streaming responses
+💬 **代理通信**
+- 与单个agent实时聊天
+- 符合 A2A 协议的消息传递
+- 对话历史跟踪
+- 支持流式响应
 
-🎨 **Beautiful UI**
-- Modern, responsive design
-- Dark theme optimized for extended use
-- Intuitive agent management
-- Real-time status updates
-- **LM Studio URL configuration** with presets for popular local LLM servers
+## 架构
 
-## Architecture
+### 后端 (Python/FastAPI)
+- **A2A SDK**： Agent2Agent 协议 Python SDK
+- **FastAPI**： API 服务器
+- **Google GenAI**：Gemini 模型提供商
+- **OpenAI**：GPT 模型提供商
+- **MCP Client**：Model Context Protocol 集成
+- **Pydantic**：数据验证和设置管理
 
-### Backend (Python/FastAPI)
-- **A2A SDK**: Official Python SDK for Agent2Agent protocol
-- **FastAPI**: High-performance async API server
-- **Google GenAI**: LLM provider for Gemini models
-- **OpenAI**: LLM provider for GPT models
-- **MCP Client**: Model Context Protocol integration
-- **Pydantic**: Data validation and settings management
+### 前端 (React/Vite)
+- **React 18**：现代 UI 库
+- **Vite**：快速构建工具和开发服务器
+- **Lucide Icons**：图标集
+- **Axios**：HTTP  API 通信
 
-### Frontend (React/Vite)
-- **React 18**: Modern UI library
-- **Vite**: Fast build tool and dev server
-- **Lucide Icons**: Beautiful icon set
-- **Axios**: HTTP client for API communication
+## 快速开始
 
-## Quick Start
-
-### Prerequisites
+### 前置要求
 - Python 3.10+
 - Node.js 18+
-- Google API Key (for Gemini models) and/or OpenAI API Key (for GPT models)
+- Google API Key（用于 Gemini 模型）和/或 OpenAI API Key（用于 GPT 模型）
 
-### Installation
+### 安装
 
-1. **Clone the repository**
+1. **克隆仓库**
 ```bash
 git clone <repository-url>
 cd base-on-a2a-agent-system
 ```
 
-2. **Set up the backend**
+2. **设置后端**
 ```bash
-# Install Python dependencies
+# 安装 Python 依赖
 pip install -r requirements.txt
 
-# Create environment file
+# 创建环境文件
 cp .env.example .env
-# Edit .env and add your GOOGLE_API_KEY and/or OPENAI_API_KEY
+# 编辑 .env 并添加你的 GOOGLE_API_KEY 和/或 OPENAI_API_KEY
 ```
 
-3. **Set up the frontend**
+3. **设置前端**
 ```bash
 cd frontend
 npm install
 ```
 
-### Running the Application
+### 运行应用
 
-1. **Start the backend server**
+1. **启动后端服务器**
 ```bash
-# From the root directory
+# 从项目根目录
 python -m uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-2. **Start the frontend dev server**
+2. **启动前端开发服务器**
 ```bash
-# From the frontend directory
+# 从 frontend 目录
 cd frontend
 npm run dev
 ```
 
-3. **Access the application**
-Open your browser and navigate to: `http://localhost:5173`
+3. **访问应用**
+在浏览器中打开：`http://localhost:5173`
 
-The backend API documentation is available at: `http://localhost:8000/docs`
+后端 API 文档地址：`http://localhost:8000/docs`
 
-## Usage
+## 使用方法
 
-### Creating an Agent
+### 创建agent
 
-1. Click the "Create Agent" button in the dashboard
-2. Fill in the agent configuration:
-   - **Name**: Give your agent a descriptive name
-   - **Description**: Describe the agent's purpose
-   - **Provider**: Choose from available providers:
-     - **Google (Gemini)**: Google's Gemini models (requires Google API key)
-     - **OpenAI (GPT)**: OpenAI's GPT models (requires OpenAI API key)
-     - **LM Studio**: Local LM Studio server (no API key required)
-     - **LocalAI**: Local LocalAI server (no API key required)
-     - **Ollama**: Local Ollama server (no API key required)
-     - **Text Generation WebUI**: Text Generation WebUI server (no API key required)
-     - **Custom (OpenAI-compatible)**: Any custom OpenAI-compatible API (no API key required)
-   - **Model**: Choose or enter a model name
-     - For Google and OpenAI: Select from predefined models
-     - For local providers: Enter your model name (e.g., llama2, mistral)
-   - **API Key** (Optional): Configure per-agent API key
-     - **Google API Key**: For Google (Gemini) provider only
-     - **OpenAI API Key**: For OpenAI (GPT) provider only
-     - Local providers don't require API keys
-     - Leave empty to use global API key from `.env` file
-     - Per-agent key overrides global setting
-   - **API Base URL**: Configure API endpoint for local/custom providers
-     - Automatically set to default for each provider
-     - Can be customized as needed
-   - **System Prompt**: Define the agent's behavior and personality
-   - **Temperature**: Control randomness (0.0 - 2.0)
-   - **Max Tokens**: Set output length limit (optional)
+1. 在仪表盘点击 "Create Agent" 按钮
+2. 填写代理agent：
+   - **Name**：给agent起个描述性名字
+   - **Description**：描述agent的用途
+   - **Provider**：选择 Google (Gemini) 或 OpenAI (GPT)
+   - **Model**：从选中提供商中选择模型
+   - **API Key** (可选)：为单个agent配置 API 密钥
+     - **Google API Key**：用于 Google (Gemini) 提供商
+     - **OpenAI API Key**：用于 OpenAI (GPT) 提供商
+     - 留空则使用 .env 文件中的全局密钥
+     - 单个agent密钥会覆盖全局设置
+   - **OpenAI API Base URL** (仅 OpenAI)：配置自定义 API 端点
+     - 从常用本地大模型服务器预设中选择 (LM Studio、LocalAI、Ollama 等)
+     - 或输入自定义 URL
+     - 留空则使用官方 OpenAI API
+   - **System Prompt**：定义agent的行为和性格
+   - **Temperature**：控制随机性 (0.0 - 2.0)
+   - **Max Tokens**：设置输出长度限制 (可选)
 
-3. **Add MCP Servers** (optional):
-   - Server Name: Identifier for the MCP server
-   - Command: Executable command (e.g., `npx`, `python`)
-   - Args: Additional command arguments
+3. **添加 MCP 服务器** (可选)：
+   - Server Name：MCP 服务器标识符
+   - Command：可执行命令 (例如 `npx`、`python`)
+   - Args：额外命令参数
 
-4. Click "Create Agent"
+4. 点击 "Create Agent"
 
-### Chatting with an Agent
+### 与agent聊天
 
-1. Click the chat icon on an agent card
-2. Type your message in the input field
-3. Press Enter or click the send button
-4. The agent will respond using the A2A protocol
+1. 点击代理卡片上的聊天图标
+2. 在输入框中输入你的消息
+3. 按回车或点击发送按钮
+4. 代理将使用 A2A 协议回复
 
-### Multi-Agent Collaboration (NEW!)
+### 多代理协作
 
-Leverage the power of multiple agents working together on complex tasks:
+利用多个agent一起解决复杂任务：
 
-**Using the UI:**
-1. Create at least 2 agents with different capabilities or perspectives
-2. Click the "Collaborate" button in the dashboard header
-3. Select the agents you want to collaborate
-4. Enter a task description (be specific about what you want to accomplish)
-5. Optionally select a coordinator agent (or let the system auto-select)
-6. Set the maximum number of collaboration rounds
-7. Click "Start Collaboration"
-8. Watch the agents work together, each contributing their expertise
-9. Review the complete conversation history with all agent contributions
+**通过界面使用：**
+1. 创建至少 2 个具有不同能力的agent
+2. 点击仪表盘顶部的 "Collaborate" 按钮
+3. 选择要协作的agent
+4. 输入任务描述 (越具体越好)
+5. 可选选择一个协调agent理 (或让系统自动选择)
+6. 设置最大协作轮次
+7. 点击 "Start Collaboration"
+8. 观看agent们一起工作，每人贡献自己的专业知识
+9. 查看完整的对话历史和所有agent的贡献
 
-**Using the API:**
+**通过 API 使用：**
 
-Use the API endpoint `/api/agents/collaborate` to start multi-agent collaboration:
+使用 API 端点 `/api/agents/collaborate` 启动多agent协作：
 
 ```bash
 curl -X POST http://localhost:8000/api/agents/collaborate \
   -H "Content-Type: application/json" \
   -d '{
     "agents": ["agent-id-1", "agent-id-2"],
-    "task": "Design a web application architecture",
+    "task": "设计一个 Web 应用架构",
     "max_rounds": 5
   }'
 ```
 
-**Collaboration Features:**
-- **A2A Protocol Compliant**: Follows Google's Agent-to-Agent protocol standards
-- **Flexible Coordination**: Choose a coordinator agent or auto-select
-- **Round-based**: Control how many iterations agents collaborate
-- **Full History**: View complete conversation with metadata and timestamps
-- **Real-time Updates**: See agents working together in real-time
+**协作功能：**
+- **符合 A2A 协议**：遵循 Google 的 Agent-to-Agent 协议标准
+- **灵活协调**：可选择协调者agent或自动选择
+- **基于轮次**：控制agent协作的迭代次数
+- **完整历史**：查看带元数据和时间戳的完整对话
+- **实时更新**：实时看agent们一起工作
 
-## API Documentation
+## API 文档
 
-### Agent Endpoints
+### 代理端点
 
-- `POST /api/agents/` - Create a new agent
-- `GET /api/agents/` - List all agents
-- `GET /api/agents/{agent_id}` - Get agent details
-- `PUT /api/agents/{agent_id}` - Update agent configuration
-- `DELETE /api/agents/{agent_id}` - Delete an agent
-- `POST /api/agents/message` - Send message to an agent
-- `POST /api/agents/collaborate` - Start agent collaboration
+- `POST /api/agents/` - 创建新agent
+- `GET /api/agents/` - 列出所有agent
+- `GET /api/agents/{agent_id}` - 获取agent详情
+- `PUT /api/agents/{agent_id}` - 更新agent配置
+- `DELETE /api/agents/{agent_id}` - 删除agent
+- `POST /api/agents/message` - 向agent发送消息
+- `POST /api/agents/collaborate` - 启动agent协作
 
-### MCP Endpoints
+### MCP 端点
 
-- `GET /api/mcp/agents/{agent_id}/tools` - Get available tools
-- `GET /api/mcp/agents/{agent_id}/resources` - Get available resources
-- `POST /api/mcp/agents/{agent_id}/tools/{server_name}/{tool_name}` - Call a tool
+- `GET /api/mcp/agents/{agent_id}/tools` - 获取可用工具
+- `GET /api/mcp/agents/{agent_id}/resources` - 获取可用资源
+- `POST /api/mcp/agents/{agent_id}/tools/{server_name}/{tool_name}` - 调用工具
 
-## Configuration
+## 配置
 
-### Environment Variables
+### 环境变量
 
-Create a `.env` file in the root directory:
+在根目录创建 `.env` 文件：
 
 ```env
-# Required (at least one)
-GOOGLE_API_KEY=your_google_api_key_here
-OPENAI_API_KEY=your_openai_api_key_here
+# 至少需要其中一个
+GOOGLE_API_KEY=你的_google_api_key
+OPENAI_API_KEY=你的_openai_api_key
 
-# Optional
-ANTHROPIC_API_KEY=your_anthropic_api_key_here
+# 可选
+ANTHROPIC_API_KEY=你的_anthropic_api_key
 
-# OpenAI Configuration (Optional)
-# Use this to connect to OpenAI-compatible APIs like LM Studio, LocalAI, etc.
-# If not set, uses official OpenAI API endpoint
+# OpenAI 配置 (可选)
+# 用于连接 OpenAI 兼容的 API，如 LM Studio、LocalAI 等
+# 如果未设置，使用官方 OpenAI API 端点
 OPENAI_BASE_URL=http://localhost:1234/v1
 
 HOST=0.0.0.0
@@ -243,46 +221,52 @@ DATABASE_URL=sqlite+aiosqlite:///./agents.db
 ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
 ```
 
-### Using Local LLM Providers (LM Studio, LocalAI, Ollama, etc.)
+### 使用 OpenAI 兼容 API (LM Studio、LocalAI 等)
 
-The system now has dedicated provider options for local LLM servers, making it easier to use them without API keys:
+系统支持任意 OpenAI 兼容 API 端点，有两种配置方式：
 
-#### Simple Method: Direct Provider Selection (Recommended)
+#### 方法 1：逐个agent配置 (推荐)
 
-1. **Start your local LLM server** (e.g., LM Studio, LocalAI, Ollama)
-2. **Create or edit an agent** in the dashboard
-3. **Select the appropriate provider**:
-   - **LM Studio**: Default URL `http://localhost:1234/v1`
-   - **LocalAI**: Default URL `http://localhost:8080/v1`
-   - **Ollama**: Default URL `http://localhost:11434/v1`
-   - **Text Generation WebUI**: Default URL `http://localhost:5000/v1`
-   - **Custom (OpenAI-compatible)**: Enter your custom URL
-4. **Enter your model name** (e.g., `llama2`, `mistral`, `codellama`)
-5. **No API key required** - local providers work without authentication by default
+通过界面直接在agent设置中配置 base URL：
 
-This method is simpler and doesn't require you to configure API keys for local models.
+1. **启动本地大模型服务器** (例如 LM Studio、LocalAI)
+2. **在仪表盘创建或编辑agent**
+3. **选择 "OpenAI (GPT)" 作为提供商**
+4. **在 "OpenAI API Base URL" 下拉菜单中选择预设**：
+   - LM Studio (默认)：`http://localhost:1234/v1`
+   - LocalAI：`http://localhost:8080/v1`
+   - Ollama：`http://localhost:11434/v1`
+   - Text Generation WebUI：`http://localhost:5000/v1`
+   - 或选择 "Custom URL..." 输入自定义地址
+5. **配置 API 密钥** (本地模型时可填任意字符串)
+6. **选择模型** (使用本地服务器支持的模型名称)
 
-#### Alternative Method: Using OpenAI Provider with Custom URL
+此方法允许不同agent使用不同 API 端点。
 
-You can still use the OpenAI provider with a custom base URL if needed:
+#### 方法 2：全局环境变量
 
-1. **Start your local LLM server**
-2. **Create an agent** and select "OpenAI (GPT)" as the provider
-3. **Configure a dummy API key** (can be any string, e.g., "local")
-4. **Set a custom base URL** in your `.env` file or per-agent configuration
-5. **Enter your model name**
+通过环境变量为所有agent设置默认 base URL：
 
-**Note**: The direct provider selection method (first method) is recommended as it's more intuitive and doesn't require configuring API keys.
+1. **启动 LM Studio** 并加载模型
+2. **在 LM Studio 中启用本地服务器** (通常运行在 `http://localhost:1234`)
+3. **配置 .env 文件**：
+   ```env
+   OPENAI_API_KEY=lm-studio  # 本地模型时可为任意字符串
+   OPENAI_BASE_URL=http://localhost:1234/v1
+   ```
+4. **创建agent** 时使用 `provider: "openai"` 并选择 LM Studio 支持的模型名称
 
-**Supported OpenAI-Compatible Platforms:**
+**注意**：逐个agent配置优先于全局环境变量。
+
+**支持的 OpenAI 兼容平台：**
 - LM Studio
 - LocalAI
-- Ollama (with OpenAI compatibility layer)
-- Text Generation WebUI (with OpenAI extension)
+- Ollama (带 OpenAI 兼容层)
+- Text Generation WebUI (带 OpenAI 扩展)
 - vLLM
-- Any other service implementing OpenAI's API format
+- 任何其他实现 OpenAI API 格式的服务
 
-### Agent Configuration Schema
+### agent配置结构
 
 ```json
 {
@@ -307,11 +291,11 @@ You can still use the OpenAI provider with a custom base URL if needed:
 }
 ```
 
-## MCP Integration
+## MCP 集成
 
-The system supports full MCP (Model Context Protocol) integration. You can connect agents to MCP servers to provide them with tools and resources.
+系统支持完整的 MCP (Model Context Protocol) 集成。可以将agent连接到 MCP 服务器以提供工具和资源。
 
-### Example MCP Server Configuration
+### 示例 MCP 服务器配置
 
 ```json
 {
@@ -322,78 +306,76 @@ The system supports full MCP (Model Context Protocol) integration. You can conne
 }
 ```
 
-### Available MCP Servers
+### 可用的 MCP 服务器
 
-- **filesystem**: File system operations
-- **github**: GitHub API integration
-- **postgres**: PostgreSQL database access
-- **sqlite**: SQLite database access
-- **brave-search**: Web search capabilities
-- And many more from the MCP ecosystem
+- **filesystem**：文件系统操作
+- **github**：GitHub API 集成
+- **postgres**：PostgreSQL 数据库访问
+- **sqlite**：SQLite 数据库访问
+- **brave-search**：网页搜索功能
+- 以及 MCP 生态中的更多服务器
 
-## Development
+## 开发
 
-### Project Structure
+### 项目结构
 
 ```
 base-on-a2a-agent-system/
 ├── backend/
-│   ├── agents/          # Agent implementation
-│   ├── api/             # FastAPI routes
-│   ├── config/          # Configuration
-│   ├── mcp/             # MCP integration
-│   ├── models/          # Data models
-│   └── main.py          # Application entry point
+│   ├── agents/          # agent实现
+│   ├── api/             # FastAPI 路由
+│   ├── config/          # 配置
+│   ├── mcp/             # MCP 集成
+│   ├── models/          # 数据模型
+│   └── main.py          # 应用入口
 ├── frontend/
 │   ├── src/
-│   │   ├── components/  # React components
-│   │   ├── pages/       # Page components
-│   │   ├── services/    # API services
-│   │   └── styles/      # CSS styles
+│   │   ├── components/  # React 组件
+│   │   ├── pages/       # 页面组件
+│   │   ├── services/    # API 服务
+│   │   └── styles/      # CSS 样式
 │   └── package.json
 ├── requirements.txt
 └── README.md
 ```
 
-### Building for Production
+### 生产构建
 
-**Backend:**
+**后端：**
 ```bash
 pip install -r requirements.txt
 python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000
 ```
 
-**Frontend:**
+**前端：**
 ```bash
 cd frontend
 npm run build
 ```
 
-The built frontend will be in `frontend/dist` and can be served by the backend automatically.
+构建好的前端将位于 `frontend/dist`，后端会自动提供服务。
 
-## Technologies Used
+## 使用技术
 
-- **Backend**: Python, FastAPI, **A2A SDK (official)**, Google GenAI SDK, OpenAI SDK, MCP, SQLAlchemy
-- **Frontend**: React, Vite, Axios, Lucide Icons
-- **AI**: Google Gemini models, OpenAI GPT models
-- **Protocols**: Agent2Agent (A2A) Protocol, Model Context Protocol (MCP)
+- **后端**：Python、FastAPI、**A2A SDK (官方)**、Google GenAI SDK、OpenAI SDK、MCP、SQLAlchemy
+- **前端**：React、Vite、Axios、Lucide Icons
+- **AI**：Google Gemini 模型、OpenAI GPT 模型
+- **协议**：Agent2Agent (A2A) 协议、Model Context Protocol (MCP)
 
-## Contributing
+## 贡献
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+欢迎贡献！请随时提交 Pull Request。
 
-## License
+## 许可证
 
-This project is open source and available under the MIT License.
+本项目开源，采用 MIT 许可证。
 
-## Support
+## 支持
 
-For issues and questions, please open an issue on GitHub.
+如有问题和疑问，请在 GitHub 上开 issue。
 
-## Acknowledgments
+## 致谢
 
-- [A2A Project](https://a2a-protocol.org/) - Official Agent2Agent Protocol
-- [A2A Python SDK](https://github.com/a2aproject/a2a-python) - Official Python SDK
-- Model Context Protocol (MCP) community
-- FastAPI framework
-- React and Vite teams
+- [A2A Project](https://a2a-protocol.org/) - 官方 Agent2Agent 协议
+- [A2A Python SDK](https://github.com/a2aproject/a2a-python) - 官方 Python SDK
+- Model Context Protocol (MCP) 社区
