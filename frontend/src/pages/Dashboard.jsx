@@ -52,19 +52,19 @@ const Dashboard = () => {
       loadAgents();
     } catch (error) {
       console.error('Error saving agent:', error);
-      alert('Failed to save agent: ' + error.message);
+      alert('保存 Agent 失败: ' + error.message);
     }
   };
 
   const handleDeleteAgent = async (agentId) => {
-    if (!confirm('Are you sure you want to delete this agent?')) return;
+    if (!confirm('您确定要删除这个 Agent 吗？')) return;
     
     try {
       await agentService.deleteAgent(agentId);
       loadAgents();
     } catch (error) {
       console.error('Error deleting agent:', error);
-      alert('Failed to delete agent');
+      alert('删除 Agent 失败');
     }
   };
 
@@ -87,13 +87,13 @@ const Dashboard = () => {
         <div className="container">
           <div className="header-content">
             <div>
-              <h1>A2A Multi-Agent System</h1>
-              <p className="subtitle">Collaborative AI Agents with MCP Support</p>
+              <h1>A2A 多智能体系统</h1>
+              <p className="subtitle">支持 MCP 的协作 AI Agents</p>
             </div>
             <div className="header-actions">
               <button className="btn btn-secondary" onClick={loadAgents}>
                 <RefreshCw size={18} />
-                Refresh
+                刷新
               </button>
               {agents.length >= 2 && (
                 <button 
@@ -101,12 +101,12 @@ const Dashboard = () => {
                   onClick={() => setShowCollaborationModal(true)}
                 >
                   <GitMerge size={18} />
-                  Collaborate
+                  协作
                 </button>
               )}
               <button className="btn btn-primary" onClick={handleCreateAgent}>
                 <Plus size={18} />
-                Create Agent
+                创建 Agent
               </button>
             </div>
           </div>
@@ -118,16 +118,16 @@ const Dashboard = () => {
           {loading ? (
             <div className="loading-state">
               <div className="spinner"></div>
-              <p>Loading agents...</p>
+              <p>加载 Agents 中...</p>
             </div>
           ) : agents.length === 0 ? (
             <div className="empty-state">
               <Users size={64} />
-              <h2>No Agents Yet</h2>
-              <p>Create your first AI agent to get started</p>
+              <h2>还没有 Agents</h2>
+              <p>创建您的第一个 AI Agent 来开始使用</p>
               <button className="btn btn-primary" onClick={handleCreateAgent}>
                 <Plus size={18} />
-                Create First Agent
+                创建第一个 Agent
               </button>
             </div>
           ) : (

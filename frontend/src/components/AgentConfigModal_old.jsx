@@ -17,28 +17,38 @@ const OPENAI_MODELS = [
   { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' }
 ];
 
+// Common models for local providers - users can enter any model name
+const LOCAL_MODELS = [
+  { value: 'custom', label: 'Enter custom model name...' }
+];
+
 // Provider definitions with their characteristics
 const PROVIDERS = {
   google: {
     label: 'Google (Gemini)',
+    labelCN: 'Google (Gemini)',
     models: GOOGLE_MODELS,
     requiresApiKey: true,
     apiKeyField: 'google_api_key',
-    apiKeyLabel: 'Google API 密钥',
+    apiKeyLabel: 'Google API Key',
+    apiKeyLabelCN: 'Google API 密钥',
     defaultModel: 'gemini-2.0-flash-exp'
   },
   openai: {
     label: 'OpenAI (GPT)',
+    labelCN: 'OpenAI (GPT)',
     models: OPENAI_MODELS,
     requiresApiKey: true,
     apiKeyField: 'openai_api_key',
-    apiKeyLabel: 'OpenAI API 密钥',
+    apiKeyLabel: 'OpenAI API Key',
+    apiKeyLabelCN: 'OpenAI API 密钥',
     defaultModel: 'gpt-4o-mini'
   },
   lmstudio: {
-    label: '本地 AI 模型 (LM Studio, Ollama 等)',
+    label: 'Local AI Model (LM Studio, Ollama, etc.)',
+    labelCN: '本地 AI 模型 (LM Studio, Ollama 等)',
+    models: LOCAL_MODELS,
     requiresApiKey: false,
-    requiresModelInput: true,
     defaultBaseUrl: 'http://localhost:1234/v1',
     defaultModel: 'local-model',
     isLocal: true
@@ -63,15 +73,13 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
     metadata: {}
   });
 
-  // State for custom model name input (for local providers)
+  // State for custom model name input
   const [customModel, setCustomModel] = useState(() => {
     if (!agent?.config?.model || !agent?.config?.provider) return '';
-    if (agent.config.provider === 'lmstudio' || agent.config.provider === 'localai' || 
-        agent.config.provider === 'ollama' || agent.config.provider === 'textgen-webui' || 
-        agent.config.provider === 'custom') {
-      return agent.config.model;
-    }
-    return '';
+    const provider = PROVIDERS[agent.config.provider];
+    if (!provider) return '';
+    const modelExists = provider.models.find(m => m.value === agent.config.model);
+    return modelExists ? '' : agent.config.model;
   });
 
   const [newMcpServer, setNewMcpServer] = useState({
@@ -113,13 +121,11 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
     // Set default base URL for local providers
     if (providerInfo.defaultBaseUrl) {
       newConfig.api_base_url = providerInfo.defaultBaseUrl;
-    } else {
-      newConfig.api_base_url = null;
     }
     
     setConfig(newConfig);
     // For local providers, initialize customModel with the default model name
-    if (providerInfo.requiresModelInput) {
+    if (providerInfo.models[0]?.value === 'custom') {
       setCustomModel(providerInfo.defaultModel);
     } else {
       setCustomModel('');
@@ -127,8 +133,12 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
   };
 
   const handleModelChange = (newModel) => {
-    setConfig({ ...config, model: newModel });
-    setCustomModel('');
+    if (newModel === 'custom') {
+      setConfig({ ...config, model: customModel || 'custom-model' });
+    } else {
+      setConfig({ ...config, model: newModel });
+      setCustomModel('');
+    }
   };
 
   const handleCustomModelChange = (value) => {
@@ -139,36 +149,18 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
   const currentProvider = PROVIDERS[config.provider];
   if (!currentProvider) {
     console.error(`Invalid provider: ${config.provider}`);
+    // Fallback to google but log the error
   }
   const providerInfo = currentProvider || PROVIDERS.google;
-  const isLocalProvider = providerInfo.isLocal;
-
-  // Fix the modal drag bug: prevent closing on mousedown and drag out
-  const handleOverlayMouseDown = (e) => {
-    // Only close if the click started and ended on the overlay (not dragged from modal content)
-    if (e.target.classList.contains('modal-overlay')) {
-      e.currentTarget.dataset.clickedOverlay = 'true';
-    }
-  };
-
-  const handleOverlayClick = (e) => {
-    // Only close if we started the click on the overlay
-    if (e.target.classList.contains('modal-overlay') && 
-        e.currentTarget.dataset.clickedOverlay === 'true') {
-      onClose();
-    }
-    delete e.currentTarget.dataset.clickedOverlay;
-  };
+  const showCustomModelInput = config.model === 'custom' || 
+    (providerInfo.models[0]?.value === 'custom');
+  const isLocalProvider = !providerInfo.requiresApiKey;
 
   return (
-    <div 
-      className="modal-overlay" 
-      onMouseDown={handleOverlayMouseDown}
-      onClick={handleOverlayClick}
-    >
+    <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>{agent ? '配置 Agent' : '创建新 Agent'}</h2>
+          <h2>{agent ? 'Configure Agent' : 'Create New Agent'}</h2>
           <button className="btn-close" onClick={onClose}>
             <X size={20} />
           </button>
@@ -176,31 +168,31 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
 
         <form onSubmit={handleSubmit} className="modal-body">
           <div className="form-section">
-            <h3>基本信息</h3>
+            <h3>Basic Information</h3>
             
             <div className="form-group">
-              <label>Agent 名称 *</label>
+              <label>Agent Name *</label>
               <input
                 type="text"
                 value={config.name}
                 onChange={(e) => setConfig({ ...config, name: e.target.value })}
-                placeholder="我的 AI Agent"
+                placeholder="My AI Agent"
                 required
               />
             </div>
 
             <div className="form-group">
-              <label>描述</label>
+              <label>Description</label>
               <textarea
                 value={config.description}
                 onChange={(e) => setConfig({ ...config, description: e.target.value })}
-                placeholder="描述这个 Agent 的用途..."
+                placeholder="Describe what this agent does..."
                 rows={3}
               />
             </div>
 
             <div className="form-group">
-              <label>模型提供商 *</label>
+              <label>Provider *</label>
               <select
                 value={config.provider}
                 onChange={(e) => handleProviderChange(e.target.value)}
@@ -211,97 +203,95 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
               </select>
             </div>
 
-            {!isLocalProvider && (
-              <div className="form-group">
-                <label>模型 *</label>
-                <select
-                  value={config.model}
-                  onChange={(e) => handleModelChange(e.target.value)}
-                >
-                  {providerInfo.models.map(model => (
-                    <option key={model.value} value={model.value}>{model.label}</option>
-                  ))}
-                </select>
-              </div>
-            )}
+            <div className="form-group">
+              <label>Model *</label>
+              <select
+                value={providerInfo.models[0]?.value === 'custom' ? 'custom' : config.model}
+                onChange={(e) => handleModelChange(e.target.value)}
+              >
+                {providerInfo.models.map(model => (
+                  <option key={model.value} value={model.value}>{model.label}</option>
+                ))}
+              </select>
+            </div>
 
-            {isLocalProvider && (
+            {showCustomModelInput && (
               <div className="form-group">
-                <label>模型名称 *</label>
+                <label>Model Name *</label>
                 <input
                   type="text"
                   value={customModel}
                   onChange={(e) => handleCustomModelChange(e.target.value)}
-                  placeholder="输入模型名称 (例如: google/gemma-3-4b, llama2, mistral 等)"
+                  placeholder="Enter model name (e.g., llama2, mistral, etc.)"
                   required
                 />
                 <small className="form-hint">
-                  输入您本地 LLM 服务器中配置的确切模型名称
+                  Enter the exact model name as configured in your local LLM server
                 </small>
               </div>
             )}
 
             {config.provider === 'google' && (
               <div className="form-group">
-                <label>Google API 密钥 (可选)</label>
+                <label>Google API Key (Optional)</label>
                 <input
                   type="password"
                   value={config.google_api_key || ''}
                   onChange={(e) => setConfig({ ...config, google_api_key: e.target.value || null })}
-                  placeholder="留空则使用 .env 文件中的全局 API 密钥"
+                  placeholder="Leave empty to use global API key from .env"
                 />
                 <small className="form-hint">
-                  单个 Agent 的 API 密钥会覆盖全局 GOOGLE_API_KEY 设置
+                  Per-agent API key overrides the global GOOGLE_API_KEY setting
                 </small>
               </div>
             )}
 
             {config.provider === 'openai' && (
               <div className="form-group">
-                <label>OpenAI API 密钥 (可选)</label>
+                <label>OpenAI API Key (Optional)</label>
                 <input
                   type="password"
                   value={config.openai_api_key || ''}
                   onChange={(e) => setConfig({ ...config, openai_api_key: e.target.value || null })}
-                  placeholder="留空则使用 .env 文件中的全局 API 密钥"
+                  placeholder="Leave empty to use global API key from .env"
                 />
                 <small className="form-hint">
-                  单个 Agent 的 API 密钥会覆盖全局 OPENAI_API_KEY 设置
+                  Per-agent API key overrides the global OPENAI_API_KEY setting
                 </small>
               </div>
             )}
 
             {isLocalProvider && (
               <div className="form-group">
-                <label>API 基础 URL *</label>
+                <label>API Base URL {providerInfo.requiresBaseUrl ? '*' : ''}</label>
                 <input
                   type="text"
                   value={config.api_base_url || ''}
                   onChange={(e) => setConfig({ ...config, api_base_url: e.target.value || null })}
                   placeholder={providerInfo.defaultBaseUrl || 'http://localhost:8080/v1'}
-                  required
+                  required={providerInfo.requiresBaseUrl}
                 />
                 <small className="form-hint">
                   {providerInfo.defaultBaseUrl 
-                    ? `默认值: ${providerInfo.defaultBaseUrl}` 
-                    : '输入您的 OpenAI 兼容 API 端点的基础 URL'}
+                    ? `Default: ${providerInfo.defaultBaseUrl}` 
+                    : 'Enter the base URL for your OpenAI-compatible API endpoint'}
                 </small>
               </div>
             )}
 
             <div className="form-group">
-              <label>系统提示词</label>
+              <label>System Prompt</label>
               <textarea
                 value={config.system_prompt || ''}
                 onChange={(e) => setConfig({ ...config, system_prompt: e.target.value })}
-                placeholder="你是一个有帮助的 AI 助手..."
+                placeholder="You are a helpful AI assistant..."
                 rows={4}
               />
             </div>
 
             <div className="form-row">
               <div className="form-group">
-                <label>温度 (Temperature)</label>
+                <label>Temperature</label>
                 <input
                   type="number"
                   value={config.temperature}
@@ -313,19 +303,19 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
               </div>
 
               <div className="form-group">
-                <label>最大令牌数</label>
+                <label>Max Tokens</label>
                 <input
                   type="number"
                   value={config.max_tokens || ''}
                   onChange={(e) => setConfig({ ...config, max_tokens: e.target.value ? parseInt(e.target.value) : null })}
-                  placeholder="自动"
+                  placeholder="Auto"
                 />
               </div>
             </div>
           </div>
 
           <div className="form-section">
-            <h3>MCP 服务器</h3>
+            <h3>MCP Servers</h3>
             
             {config.mcp_servers.map((server, index) => (
               <div key={index} className="mcp-server-item">
@@ -349,7 +339,7 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
                   type="text"
                   value={newMcpServer.name}
                   onChange={(e) => setNewMcpServer({ ...newMcpServer, name: e.target.value })}
-                  placeholder="服务器名称"
+                  placeholder="Server name"
                 />
               </div>
               <div className="form-group">
@@ -357,21 +347,21 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
                   type="text"
                   value={newMcpServer.command}
                   onChange={(e) => setNewMcpServer({ ...newMcpServer, command: e.target.value })}
-                  placeholder="命令 (例如: npx, python)"
+                  placeholder="Command (e.g., npx, python)"
                 />
               </div>
               <button type="button" className="btn btn-secondary" onClick={addMcpServer}>
-                <Plus size={16} /> 添加服务器
+                <Plus size={16} /> Add Server
               </button>
             </div>
           </div>
 
           <div className="modal-footer">
             <button type="button" className="btn btn-secondary" onClick={onClose}>
-              取消
+              Cancel
             </button>
             <button type="submit" className="btn btn-primary">
-              {agent ? '更新 Agent' : '创建 Agent'}
+              {agent ? 'Update Agent' : 'Create Agent'}
             </button>
           </div>
         </form>
