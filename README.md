@@ -11,7 +11,18 @@ A sophisticated multi-agent collaboration system built with the **official A2A P
 - Support for various AI models:
   - **Google Gemini**: 2.0 Flash, 1.5 Pro, 1.5 Flash
   - **OpenAI GPT**: GPT-4, GPT-4 Turbo, GPT-4o, GPT-3.5 Turbo
+  - **Local LLMs**: LM Studio, LocalAI, Ollama, and more via OpenAI-compatible APIs
 - Customizable agent configurations
+- **Per-agent API endpoint configuration** for flexible LLM server setups
+
+🤝 **Multi-Agent Collaboration (NEW!)**
+- **Interactive collaboration UI** for coordinating multiple agents
+- Select agents and define collaborative tasks through intuitive interface
+- Real-time visualization of agent discussions and contributions
+- Round-based collaboration with configurable iterations
+- Coordinator agent selection for managing collaboration flow
+- Complete conversation history with timestamps and metadata
+- Inspired by CrewAI's multi-agent patterns and A2A protocol standards
 
 🔧 **MCP Integration**
 - Full Model Context Protocol support
@@ -30,6 +41,7 @@ A sophisticated multi-agent collaboration system built with the **official A2A P
 - Dark theme optimized for extended use
 - Intuitive agent management
 - Real-time status updates
+- **LM Studio URL configuration** with presets for popular local LLM servers
 
 ## Architecture
 
@@ -108,6 +120,10 @@ The backend API documentation is available at: `http://localhost:8000/docs`
    - **Description**: Describe the agent's purpose
    - **Provider**: Choose between Google (Gemini) or OpenAI (GPT)
    - **Model**: Choose a model from the selected provider
+   - **OpenAI API Base URL** (OpenAI only): Configure custom API endpoint
+     - Select from preset local LLM servers (LM Studio, LocalAI, Ollama, etc.)
+     - Or enter a custom URL for any OpenAI-compatible API
+     - Leave blank to use the official OpenAI API
    - **System Prompt**: Define the agent's behavior and personality
    - **Temperature**: Control randomness (0.0 - 2.0)
    - **Max Tokens**: Set output length limit (optional)
@@ -126,7 +142,22 @@ The backend API documentation is available at: `http://localhost:8000/docs`
 3. Press Enter or click the send button
 4. The agent will respond using the A2A protocol
 
-### Agent Collaboration
+### Multi-Agent Collaboration (NEW!)
+
+Leverage the power of multiple agents working together on complex tasks:
+
+**Using the UI:**
+1. Create at least 2 agents with different capabilities or perspectives
+2. Click the "Collaborate" button in the dashboard header
+3. Select the agents you want to collaborate
+4. Enter a task description (be specific about what you want to accomplish)
+5. Optionally select a coordinator agent (or let the system auto-select)
+6. Set the maximum number of collaboration rounds
+7. Click "Start Collaboration"
+8. Watch the agents work together, each contributing their expertise
+9. Review the complete conversation history with all agent contributions
+
+**Using the API:**
 
 Use the API endpoint `/api/agents/collaborate` to start multi-agent collaboration:
 
@@ -139,6 +170,13 @@ curl -X POST http://localhost:8000/api/agents/collaborate \
     "max_rounds": 5
   }'
 ```
+
+**Collaboration Features:**
+- **A2A Protocol Compliant**: Follows Google's Agent-to-Agent protocol standards
+- **Flexible Coordination**: Choose a coordinator agent or auto-select
+- **Round-based**: Control how many iterations agents collaborate
+- **Full History**: View complete conversation with metadata and timestamps
+- **Real-time Updates**: See agents working together in real-time
 
 ## API Documentation
 
@@ -186,7 +224,29 @@ ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
 
 ### Using OpenAI-Compatible APIs (LM Studio, LocalAI, etc.)
 
-The system supports any OpenAI-compatible API endpoint. To use local models with LM Studio:
+The system supports any OpenAI-compatible API endpoint with two configuration methods:
+
+#### Method 1: Per-Agent Configuration (Recommended)
+
+Configure the base URL directly in the agent settings through the UI:
+
+1. **Start your local LLM server** (e.g., LM Studio, LocalAI)
+2. **Create or edit an agent** in the dashboard
+3. **Select "OpenAI (GPT)" as the provider**
+4. **Choose a preset** from the "OpenAI API Base URL" dropdown:
+   - LM Studio (default): `http://localhost:1234/v1`
+   - LocalAI: `http://localhost:8080/v1`
+   - Ollama: `http://localhost:11434/v1`
+   - Text Generation WebUI: `http://localhost:5000/v1`
+   - Or select "Custom URL..." to enter your own
+5. **Configure your API key** (can be any string for local models)
+6. **Select your model** (use the model name from your local server)
+
+This method allows different agents to use different API endpoints.
+
+#### Method 2: Global Environment Variable
+
+Set a default base URL for all agents via environment variables:
 
 1. **Start LM Studio** and load a model
 2. **Enable the local server** in LM Studio (usually runs on `http://localhost:1234`)
@@ -196,6 +256,8 @@ The system supports any OpenAI-compatible API endpoint. To use local models with
    OPENAI_BASE_URL=http://localhost:1234/v1
    ```
 4. **Create an agent** with `provider: "openai"` and use any model name supported by your LM Studio setup
+
+**Note**: Per-agent configuration takes priority over the global environment variable.
 
 **Supported OpenAI-Compatible Platforms:**
 - LM Studio
@@ -216,6 +278,7 @@ The system supports any OpenAI-compatible API endpoint. To use local models with
   "system_prompt": "string",
   "temperature": 0.7,
   "max_tokens": null,
+  "openai_base_url": "http://localhost:1234/v1",
   "mcp_servers": [
     {
       "name": "string",
