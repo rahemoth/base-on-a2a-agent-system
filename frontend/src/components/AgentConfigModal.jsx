@@ -81,8 +81,30 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
     env: {}
   });
 
+  const [urlWarning, setUrlWarning] = useState('');
+
   // Track if mouse was pressed on overlay for proper drag handling
   const overlayClickStarted = React.useRef(false);
+
+  // Helper function to clean and validate base URL
+  const handleBaseUrlChange = (value) => {
+    let cleanedUrl = value || null;
+    let warning = '';
+    
+    if (cleanedUrl && cleanedUrl.endsWith('/v1')) {
+      // Auto-remove /v1 suffix and show warning
+      cleanedUrl = cleanedUrl.slice(0, -3);
+      warning = '⚠️ 已自动移除 /v1 后缀 - OpenAI SDK 会自动添加';
+    }
+    
+    setUrlWarning(warning);
+    setConfig({ ...config, api_base_url: cleanedUrl });
+    
+    // Clear warning after 3 seconds
+    if (warning) {
+      setTimeout(() => setUrlWarning(''), 3000);
+    }
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -279,7 +301,7 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
                 <input
                   type="text"
                   value={config.api_base_url || ''}
-                  onChange={(e) => setConfig({ ...config, api_base_url: e.target.value || null })}
+                  onChange={(e) => handleBaseUrlChange(e.target.value)}
                   placeholder={providerInfo.defaultBaseUrl || 'http://localhost:8080'}
                   required
                 />
@@ -288,6 +310,11 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
                     ? `默认值: ${providerInfo.defaultBaseUrl} (不要包含 /v1 后缀)` 
                     : '输入您的 OpenAI 兼容 API 端点的基础 URL (不要包含 /v1 后缀)'}
                 </small>
+                {urlWarning && (
+                  <small className="form-hint" style={{ color: '#ff9800', fontWeight: 'bold' }}>
+                    {urlWarning}
+                  </small>
+                )}
               </div>
             )}
 
