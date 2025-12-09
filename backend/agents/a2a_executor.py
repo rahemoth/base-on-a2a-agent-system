@@ -173,7 +173,12 @@ class LLMAgentExecutor(AgentExecutor):
         pass
     
     def _extract_text_from_message(self, message: types.Message) -> str:
-        """Extract text content from message parts"""
+        """Extract text content from message parts
+        
+        The A2A SDK uses Pydantic RootModel for discriminated unions, where Part
+        is a wrapper around TextPart | FilePart | DataPart. We access part.root
+        to get the actual typed part before checking instance type.
+        """
         text_parts = []
         
         for part in message.parts:
@@ -181,10 +186,8 @@ class LLMAgentExecutor(AgentExecutor):
             # We need to access part.root to get the actual TextPart/FilePart/DataPart
             actual_part = part.root if hasattr(part, 'root') else part
             
+            # Only extract from TextPart - other part types (FilePart, DataPart) don't have text
             if isinstance(actual_part, types.TextPart):
-                text_parts.append(actual_part.text)
-            elif hasattr(actual_part, 'text') and actual_part.text:
-                # Fallback for cases where the part has a text attribute
                 text_parts.append(actual_part.text)
         
         return " ".join(text_parts)

@@ -2,6 +2,7 @@
 A2A-compliant Agent Manager using the official a2a-sdk
 """
 import uuid
+import logging
 from typing import Dict, Optional, List
 from datetime import datetime, timezone
 
@@ -14,6 +15,9 @@ from a2a.server.events import InMemoryQueueManager
 from backend.agents.a2a_executor import LLMAgentExecutor
 from backend.models import AgentConfig, AgentStatus, AgentResponse
 from backend.config import settings
+
+# Initialize logger at module level
+logger = logging.getLogger(__name__)
 
 
 class A2AAgentManager:
@@ -203,9 +207,6 @@ class A2AAgentManager:
         task_id: Optional[str] = None,
     ) -> types.Message:
         """Send a message to an agent and get response"""
-        import logging
-        logger = logging.getLogger(__name__)
-        
         logger.debug(f"Sending message to agent {agent_id}")
         
         handler = self.request_handlers.get(agent_id)

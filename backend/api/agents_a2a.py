@@ -1,6 +1,7 @@
 """
 FastAPI routes for A2A-compliant agent management and A2A protocol endpoints
 """
+import logging
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse, JSONResponse
 from typing import List, Optional
@@ -15,6 +16,9 @@ from backend.models import (
     AgentCollaboration,
 )
 from backend.agents.a2a_manager import a2a_agent_manager
+
+# Initialize logger at module level
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/agents", tags=["agents"])
 
@@ -91,9 +95,6 @@ async def delete_agent(agent_id: str):
 @router.post("/message")
 async def send_message(agent_message: AgentMessage):
     """Send a message to an agent (legacy endpoint)"""
-    import logging
-    logger = logging.getLogger(__name__)
-    
     logger.debug(f"Received message for agent {agent_message.agent_id}")
     
     try:
