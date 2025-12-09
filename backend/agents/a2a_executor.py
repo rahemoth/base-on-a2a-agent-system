@@ -49,9 +49,14 @@ class LLMAgentExecutor(AgentExecutor):
     
     def _initialize_clients(self):
         """Initialize LLM clients based on configuration"""
+        logger.info(f"Agent {self.agent_id}: Initializing clients for provider: {self.config.provider.value}")
+        
         if self.config.provider == ModelProvider.GOOGLE:
             if self.google_api_key:
                 self.google_client = genai.Client(api_key=self.google_api_key)
+                logger.info(f"Agent {self.agent_id}: Google client initialized")
+            else:
+                logger.warning(f"Agent {self.agent_id}: Google API key not provided")
         elif self.config.provider in [ModelProvider.OPENAI, ModelProvider.LMSTUDIO, 
                                       ModelProvider.LOCALAI, ModelProvider.OLLAMA, 
                                       ModelProvider.TEXTGEN_WEBUI, ModelProvider.CUSTOM]:
@@ -61,12 +66,15 @@ class LLMAgentExecutor(AgentExecutor):
             # Determine base URL based on provider
             if self.config.api_base_url:
                 base_url = self.config.api_base_url
+                logger.debug(f"Agent {self.agent_id}: Using api_base_url from config: {base_url}")
             elif self.config.openai_base_url:
                 # Backward compatibility
                 base_url = self.config.openai_base_url
+                logger.debug(f"Agent {self.agent_id}: Using openai_base_url from config: {base_url}")
             elif self.config.provider == ModelProvider.OPENAI:
                 # Use official OpenAI API (no custom base URL)
                 base_url = None
+                logger.debug(f"Agent {self.agent_id}: Using official OpenAI API")
             else:
                 # Default URLs for each local provider
                 default_urls = {
@@ -77,14 +85,19 @@ class LLMAgentExecutor(AgentExecutor):
                     ModelProvider.CUSTOM: None
                 }
                 base_url = default_urls.get(self.config.provider)
+                logger.debug(f"Agent {self.agent_id}: Using default URL for {self.config.provider.value}: {base_url}")
             
             if base_url:
                 self.openai_client = AsyncOpenAI(
                     api_key=api_key,
                     base_url=base_url
                 )
+                logger.info(f"Agent {self.agent_id}: OpenAI client initialized with base_url: {base_url}")
             else:
                 self.openai_client = AsyncOpenAI(api_key=api_key)
+                logger.info(f"Agent {self.agent_id}: OpenAI client initialized with default endpoint")
+        else:
+            logger.error(f"Agent {self.agent_id}: Unsupported provider: {self.config.provider}")
     
     async def initialize_mcp(self):
         """Initialize MCP servers if configured"""
@@ -103,15 +116,19 @@ class LLMAgentExecutor(AgentExecutor):
         Execute agent logic for an incoming request.
         This is the main entry point called by the A2A framework.
         """
+        logger.info(f"Agent {self.agent_id}: execute() called - Starting message processing")
         try:
             # Get the incoming message
             message = request_context.message
+            logger.debug(f"Agent {self.agent_id}: Received message with {len(message.parts)} parts")
             
             # Extract text content from message parts
             text_content = self._extract_text_from_message(message)
+            logger.debug(f"Agent {self.agent_id}: Extracted text content: {text_content[:100]}..." if text_content else "No text content")
             
             if not text_content:
                 # No text content, send error
+                logger.warning(f"Agent {self.agent_id}: No text content found in message")
                 error_message = self._create_message(
                     "No text content found in the message.",
                     context_id=message.context_id,
@@ -121,6 +138,7 @@ class LLMAgentExecutor(AgentExecutor):
                 return
             
             # Generate response using LLM
+            logger.info(f"Agent {self.agent_id}: Generating response using {self.config.provider.value} provider with model {self.config.model}")
             if self.config.provider == ModelProvider.GOOGLE:
                 response_text = await self._generate_google(text_content, request_context)
             elif self.config.provider in [ModelProvider.OPENAI, ModelProvider.LMSTUDIO, 
@@ -130,6 +148,8 @@ class LLMAgentExecutor(AgentExecutor):
             else:
                 raise ValueError(f"Unsupported provider: {self.config.provider}")
             
+            logger.info(f"Agent {self.agent_id}: Generated response of length {len(response_text)}")
+            
             # Create and publish response message
             response_message = self._create_message(
                 response_text,
@@ -137,10 +157,13 @@ class LLMAgentExecutor(AgentExecutor):
                 task_id=message.task_id
             )
             
+            logger.debug(f"Agent {self.agent_id}: Enqueueing response message")
             await event_queue.enqueue_event(response_message)
+            logger.info(f"Agent {self.agent_id}: Message processing completed successfully")
             
         except Exception as e:
             # Handle errors
+            logger.error(f"Agent {self.agent_id}: Error in execute(): {str(e)}", exc_info=True)
             error_message = self._create_message(
                 f"Error processing message: {str(e)}",
                 context_id=request_context.message.context_id,
@@ -223,8 +246,15 @@ class LLMAgentExecutor(AgentExecutor):
     
     async def _generate_openai(self, text: str, request_context: RequestContext) -> str:
         """Generate response using OpenAI"""
+        logger.debug(f"Agent {self.agent_id}: _generate_openai() called")
+        
         if not self.openai_client:
+            logger.error(f"Agent {self.agent_id}: OpenAI client not initialized!")
             raise RuntimeError("OpenAI client not initialized")
+        
+        # Log base URL being used
+        if hasattr(self.openai_client, 'base_url'):
+            logger.info(f"Agent {self.agent_id}: Using API base URL: {self.openai_client.base_url}")
         
         # Build messages array
         messages = []
@@ -235,9 +265,11 @@ class LLMAgentExecutor(AgentExecutor):
                 "role": "system",
                 "content": self.config.system_prompt
             })
+            logger.debug(f"Agent {self.agent_id}: Added system prompt")
         
         # Add context messages if available
         if hasattr(request_context, 'task') and request_context.task:
+            logger.debug(f"Agent {self.agent_id}: Adding {len(request_context.task.messages)} context messages")
             for msg in request_context.task.messages:
                 role = "user" if msg.role == types.Role.user else "assistant"
                 msg_text = self._extract_text_from_message(msg)
@@ -252,6 +284,7 @@ class LLMAgentExecutor(AgentExecutor):
             "role": "user",
             "content": text
         })
+        logger.debug(f"Agent {self.agent_id}: Total messages in request: {len(messages)}")
         
         # Configure generation
         kwargs = {
@@ -264,20 +297,29 @@ class LLMAgentExecutor(AgentExecutor):
         
         # Generate response
         try:
-            logger.debug(f"Sending request to {self.config.provider.value} with model {self.config.model}")
+            logger.info(f"Agent {self.agent_id}: Sending request to {self.config.provider.value} with model {self.config.model}")
+            logger.debug(f"Agent {self.agent_id}: Request parameters: model={self.config.model}, temperature={self.config.temperature}, num_messages={len(messages)}")
+            
             response = await self.openai_client.chat.completions.create(**kwargs)
             
+            logger.debug(f"Agent {self.agent_id}: Received response from API")
+            
             if not response.choices:
-                raise RuntimeError("No response choices returned from API")
+                error_msg = "No response choices returned from API"
+                logger.error(f"Agent {self.agent_id}: {error_msg}")
+                raise RuntimeError(error_msg)
             
             if not response.choices[0].message.content:
-                raise RuntimeError("Empty content in response")
+                error_msg = "Empty content in response"
+                logger.error(f"Agent {self.agent_id}: {error_msg}")
+                raise RuntimeError(error_msg)
             
             result = response.choices[0].message.content
-            logger.debug(f"Received response: {result[:100]}...")
+            logger.info(f"Agent {self.agent_id}: Successfully received response of length {len(result)}")
+            logger.debug(f"Agent {self.agent_id}: Response preview: {result[:100]}...")
             return result
         except Exception as e:
-            logger.error(f"Failed to generate response: {str(e)}", exc_info=True)
+            logger.error(f"Agent {self.agent_id}: Failed to generate response: {str(e)}", exc_info=True)
             raise
     
     async def cleanup(self):

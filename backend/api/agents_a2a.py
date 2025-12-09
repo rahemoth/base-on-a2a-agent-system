@@ -91,12 +91,21 @@ async def delete_agent(agent_id: str):
 @router.post("/message")
 async def send_message(agent_message: AgentMessage):
     """Send a message to an agent (legacy endpoint)"""
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    logger.info(f"API: Received message request for agent {agent_message.agent_id}")
+    logger.debug(f"API: Message: {agent_message.message[:100]}...")
+    
     try:
         # Use A2A manager to send message
+        logger.debug(f"API: Calling a2a_agent_manager.send_message()")
         response = await a2a_agent_manager.send_message(
             agent_message.agent_id,
             agent_message.message,
         )
+        
+        logger.debug(f"API: Received response from agent manager")
         
         # Extract text from response
         text_response = ""
@@ -104,10 +113,15 @@ async def send_message(agent_message: AgentMessage):
             if isinstance(part, types.TextPart):
                 text_response += part.text
         
+        logger.info(f"API: Extracted text response of length {len(text_response)}")
+        logger.debug(f"API: Response preview: {text_response[:100]}...")
+        
         return {"response": text_response}
     except ValueError as e:
+        logger.error(f"API: ValueError - {str(e)}")
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
+        logger.error(f"API: Exception - {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
