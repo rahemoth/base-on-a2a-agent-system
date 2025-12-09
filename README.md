@@ -8,12 +8,18 @@ A sophisticated multi-agent collaboration system built with the **official A2A P
 - Create and manage multiple AI agents
 - **Built with official A2A SDK (a2a-sdk v0.3.20+)**
 - Full A2A protocol compliance
-- Support for various AI models:
-  - **Google Gemini**: 2.0 Flash, 1.5 Pro, 1.5 Flash
-  - **OpenAI GPT**: GPT-4, GPT-4 Turbo, GPT-4o, GPT-3.5 Turbo
-  - **Local LLMs**: LM Studio, LocalAI, Ollama, and more via OpenAI-compatible APIs
+- Support for various AI providers:
+  - **Google Gemini**: 2.0 Flash, 1.5 Pro, 1.5 Flash (requires API key)
+  - **OpenAI GPT**: GPT-4, GPT-4 Turbo, GPT-4o, GPT-3.5 Turbo (requires API key)
+  - **Local LLMs** (no API key required):
+    - **LM Studio**: Easy-to-use local LLM server
+    - **LocalAI**: Self-hosted OpenAI-compatible API
+    - **Ollama**: Local LLM runner with simple setup
+    - **Text Generation WebUI**: Feature-rich web interface for local models
+    - **Custom**: Any OpenAI-compatible API endpoint
 - Customizable agent configurations
-- **Per-agent API key configuration (NEW!)** - different API keys for each agent
+- **Separate provider options for local models** - no need for API keys when using local LLMs
+- **Per-agent API key configuration** - different API keys for each cloud provider agent
 - **Per-agent API endpoint configuration** for flexible LLM server setups
 
 🤝 **Multi-Agent Collaboration (NEW!)**
@@ -119,17 +125,26 @@ The backend API documentation is available at: `http://localhost:8000/docs`
 2. Fill in the agent configuration:
    - **Name**: Give your agent a descriptive name
    - **Description**: Describe the agent's purpose
-   - **Provider**: Choose between Google (Gemini) or OpenAI (GPT)
-   - **Model**: Choose a model from the selected provider
-   - **API Key** (Optional - NEW!): Configure per-agent API key
-     - **Google API Key**: For Google (Gemini) provider
-     - **OpenAI API Key**: For OpenAI (GPT) provider
+   - **Provider**: Choose from available providers:
+     - **Google (Gemini)**: Google's Gemini models (requires Google API key)
+     - **OpenAI (GPT)**: OpenAI's GPT models (requires OpenAI API key)
+     - **LM Studio**: Local LM Studio server (no API key required)
+     - **LocalAI**: Local LocalAI server (no API key required)
+     - **Ollama**: Local Ollama server (no API key required)
+     - **Text Generation WebUI**: Text Generation WebUI server (no API key required)
+     - **Custom (OpenAI-compatible)**: Any custom OpenAI-compatible API (no API key required)
+   - **Model**: Choose or enter a model name
+     - For Google and OpenAI: Select from predefined models
+     - For local providers: Enter your model name (e.g., llama2, mistral)
+   - **API Key** (Optional): Configure per-agent API key
+     - **Google API Key**: For Google (Gemini) provider only
+     - **OpenAI API Key**: For OpenAI (GPT) provider only
+     - Local providers don't require API keys
      - Leave empty to use global API key from `.env` file
      - Per-agent key overrides global setting
-   - **OpenAI API Base URL** (OpenAI only): Configure custom API endpoint
-     - Select from preset local LLM servers (LM Studio, LocalAI, Ollama, etc.)
-     - Or enter a custom URL for any OpenAI-compatible API
-     - Leave blank to use the official OpenAI API
+   - **API Base URL**: Configure API endpoint for local/custom providers
+     - Automatically set to default for each provider
+     - Can be customized as needed
    - **System Prompt**: Define the agent's behavior and personality
    - **Temperature**: Control randomness (0.0 - 2.0)
    - **Max Tokens**: Set output length limit (optional)
@@ -228,42 +243,36 @@ DATABASE_URL=sqlite+aiosqlite:///./agents.db
 ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
 ```
 
-### Using OpenAI-Compatible APIs (LM Studio, LocalAI, etc.)
+### Using Local LLM Providers (LM Studio, LocalAI, Ollama, etc.)
 
-The system supports any OpenAI-compatible API endpoint with two configuration methods:
+The system now has dedicated provider options for local LLM servers, making it easier to use them without API keys:
 
-#### Method 1: Per-Agent Configuration (Recommended)
+#### Simple Method: Direct Provider Selection (Recommended)
 
-Configure the base URL directly in the agent settings through the UI:
-
-1. **Start your local LLM server** (e.g., LM Studio, LocalAI)
+1. **Start your local LLM server** (e.g., LM Studio, LocalAI, Ollama)
 2. **Create or edit an agent** in the dashboard
-3. **Select "OpenAI (GPT)" as the provider**
-4. **Choose a preset** from the "OpenAI API Base URL" dropdown:
-   - LM Studio (default): `http://localhost:1234/v1`
-   - LocalAI: `http://localhost:8080/v1`
-   - Ollama: `http://localhost:11434/v1`
-   - Text Generation WebUI: `http://localhost:5000/v1`
-   - Or select "Custom URL..." to enter your own
-5. **Configure your API key** (can be any string for local models)
-6. **Select your model** (use the model name from your local server)
+3. **Select the appropriate provider**:
+   - **LM Studio**: Default URL `http://localhost:1234/v1`
+   - **LocalAI**: Default URL `http://localhost:8080/v1`
+   - **Ollama**: Default URL `http://localhost:11434/v1`
+   - **Text Generation WebUI**: Default URL `http://localhost:5000/v1`
+   - **Custom (OpenAI-compatible)**: Enter your custom URL
+4. **Enter your model name** (e.g., `llama2`, `mistral`, `codellama`)
+5. **No API key required** - local providers work without authentication by default
 
-This method allows different agents to use different API endpoints.
+This method is simpler and doesn't require you to configure API keys for local models.
 
-#### Method 2: Global Environment Variable
+#### Alternative Method: Using OpenAI Provider with Custom URL
 
-Set a default base URL for all agents via environment variables:
+You can still use the OpenAI provider with a custom base URL if needed:
 
-1. **Start LM Studio** and load a model
-2. **Enable the local server** in LM Studio (usually runs on `http://localhost:1234`)
-3. **Configure your `.env` file**:
-   ```env
-   OPENAI_API_KEY=lm-studio  # Can be any string when using local models
-   OPENAI_BASE_URL=http://localhost:1234/v1
-   ```
-4. **Create an agent** with `provider: "openai"` and use any model name supported by your LM Studio setup
+1. **Start your local LLM server**
+2. **Create an agent** and select "OpenAI (GPT)" as the provider
+3. **Configure a dummy API key** (can be any string, e.g., "local")
+4. **Set a custom base URL** in your `.env` file or per-agent configuration
+5. **Enter your model name**
 
-**Note**: Per-agent configuration takes priority over the global environment variable.
+**Note**: The direct provider selection method (first method) is recommended as it's more intuitive and doesn't require configuring API keys.
 
 **Supported OpenAI-Compatible Platforms:**
 - LM Studio
