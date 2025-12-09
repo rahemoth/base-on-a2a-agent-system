@@ -11,17 +11,33 @@
 
 **解决方案 / Solution:**
 - 修复了 `backend/agents/a2a_executor.py` 中的 `_initialize_clients()` 方法，添加了对所有本地模型提供商的支持
-- 修复了 `execute()` 方法，确保本地模型使用 OpenAI 兼容 API
+- **重要修复**: 修复了 `backend/agents/a2a_agent.py`（系统实际使用的文件）中的日志和错误处理
 - 添加了调试日志和错误处理，更容易追踪问题
 - 添加了空响应检查，防止返回空内容
+- 配置了 `run_backend.py` 以输出 DEBUG 级别日志
 
 **代码变更:**
 ```python
-# 支持的提供商现在包括:
-elif self.config.provider in [ModelProvider.OPENAI, ModelProvider.LMSTUDIO, 
-                              ModelProvider.LOCALAI, ModelProvider.OLLAMA, 
-                              ModelProvider.TEXTGEN_WEBUI, ModelProvider.CUSTOM]:
-    # 使用 OpenAI 兼容 API
+# backend/agents/a2a_agent.py
+import logging
+
+logger = logging.getLogger(__name__)
+
+async def _send_message_openai(self, message, context=None, stream=False):
+    try:
+        logger.debug(f"Sending request to {self.config.provider.value} with model {self.config.model}")
+        logger.debug(f"API base URL: {getattr(self.openai_client, '_base_url', 'default')}")
+        
+        response = await self.openai_client.chat.completions.create(**kwargs)
+        
+        if not response.choices or not response.choices[0].message.content:
+            raise RuntimeError("Empty content in response")
+        
+        logger.debug(f"Received response: {response.choices[0].message.content[:100]}...")
+        # ...
+    except Exception as e:
+        logger.error(f"Failed to generate response: {str(e)}", exc_info=True)
+        raise
 ```
 
 ### 2. 前端 UI 简化 / Frontend UI Simplification
@@ -118,17 +134,22 @@ const handleOverlayClick = (e) => {
 2. 发送测试消息
 3. 观察后端日志查看调试信息
 
+**重要**: 确保使用 `python run_backend.py` 启动后端以获取完整的调试日志。
+
 ### 调试信息 / Debug Information
 
 后端现在会使用标准 Python logging 模块输出调试日志：
 ```
-DEBUG:backend.agents.a2a_executor:Sending request to lmstudio with model google/gemma-3-4b
-DEBUG:backend.agents.a2a_executor:Received response: ...
+2024-12-09 20:00:00 - backend.agents.a2a_agent - DEBUG - Sending request to lmstudio with model google/gemma-3-4b
+2024-12-09 20:00:00 - backend.agents.a2a_agent - DEBUG - API base URL: http://192.168.175.1:1234/v1
+2024-12-09 20:00:01 - backend.agents.a2a_agent - DEBUG - Received response: 你好！我是...
 ```
 
 如果出现错误，日志会显示：
 ```
-ERROR:backend.agents.a2a_executor:Failed to generate response: ...
+2024-12-09 20:00:01 - backend.agents.a2a_agent - ERROR - Failed to generate response from lmstudio: Connection refused
+Traceback (most recent call last):
+  ...
 ```
 
 可以通过设置日志级别来控制输出的详细程度。
@@ -137,6 +158,8 @@ ERROR:backend.agents.a2a_executor:Failed to generate response: ...
 
 ### 后端 / Backend
 - `backend/agents/a2a_executor.py` - 修复本地模型支持和添加调试日志
+- `backend/agents/a2a_agent.py` - 添加调试日志和错误处理（系统实际使用的文件）
+- `run_backend.py` - 配置日志输出
 
 ### 前端 / Frontend
 - `frontend/src/components/AgentConfigModal.jsx` - UI 简化和中文化
