@@ -94,34 +94,32 @@ async def send_message(agent_message: AgentMessage):
     import logging
     logger = logging.getLogger(__name__)
     
-    logger.info(f"API: Received message request for agent {agent_message.agent_id}")
-    logger.debug(f"API: Message: {agent_message.message[:100]}...")
+    logger.debug(f"Received message for agent {agent_message.agent_id}")
     
     try:
         # Use A2A manager to send message
-        logger.debug(f"API: Calling a2a_agent_manager.send_message()")
         response = await a2a_agent_manager.send_message(
             agent_message.agent_id,
             agent_message.message,
         )
         
-        logger.debug(f"API: Received response from agent manager")
-        
         # Extract text from response
+        # Note: response.parts contains Part objects which are RootModel wrappers
+        # We need to access part.root to get the actual TextPart/FilePart/DataPart
         text_response = ""
         for part in response.parts:
-            if isinstance(part, types.TextPart):
-                text_response += part.text
+            actual_part = part.root if hasattr(part, 'root') else part
+            if isinstance(actual_part, types.TextPart):
+                text_response += actual_part.text
         
-        logger.info(f"API: Extracted text response of length {len(text_response)}")
-        logger.debug(f"API: Response preview: {text_response[:100]}...")
+        logger.debug(f"Returning response to client")
         
         return {"response": text_response}
     except ValueError as e:
-        logger.error(f"API: ValueError - {str(e)}")
+        logger.error(f"Agent not found: {str(e)}")
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
-        logger.error(f"API: Exception - {str(e)}", exc_info=True)
+        logger.error(f"Error processing message: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 

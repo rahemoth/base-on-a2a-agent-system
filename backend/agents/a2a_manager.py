@@ -206,15 +206,12 @@ class A2AAgentManager:
         import logging
         logger = logging.getLogger(__name__)
         
-        logger.info(f"A2AAgentManager: send_message called for agent {agent_id}")
-        logger.debug(f"A2AAgentManager: Message text: {message_text[:100]}...")
+        logger.debug(f"Sending message to agent {agent_id}")
         
         handler = self.request_handlers.get(agent_id)
         if not handler:
-            logger.error(f"A2AAgentManager: Agent {agent_id} not found in request_handlers")
+            logger.error(f"Agent {agent_id} not found")
             raise ValueError(f"Agent {agent_id} not found")
-        
-        logger.debug(f"A2AAgentManager: Handler found for agent {agent_id}")
         
         # Create message
         message = types.Message(
@@ -226,17 +223,13 @@ class A2AAgentManager:
             task_id=task_id,
         )
         
-        logger.debug(f"A2AAgentManager: Created message with ID {message.message_id}")
-        
         # Send message through handler
         params = types.MessageSendParams(message=message)
         
-        logger.debug(f"A2AAgentManager: Calling handler.on_message_send()")
         # Call the handler's on_message_send method directly
         response = await handler.on_message_send(params)
         
-        logger.info(f"A2AAgentManager: Received response from handler")
-        logger.debug(f"A2AAgentManager: Response has {len(response.parts)} parts")
+        logger.debug(f"Received response from agent {agent_id}")
         
         return response
     
@@ -327,10 +320,12 @@ class A2AAgentManager:
                     response = await self.send_message(agent_id, message_to_send)
                     
                     # Extract text from response
+                    # Note: response.parts contains Part objects which are RootModel wrappers
                     text_response = ""
                     for part in response.parts:
-                        if isinstance(part, types.TextPart):
-                            text_response += part.text
+                        actual_part = part.root if hasattr(part, 'root') else part
+                        if isinstance(actual_part, types.TextPart):
+                            text_response += actual_part.text
                     
                     collaboration_history.append({
                         "role": "agent",
