@@ -2,6 +2,7 @@
 A2A Agent Executor implementation using the official a2a-sdk
 """
 import uuid
+import logging
 from typing import Optional, Dict, Any, List
 from datetime import datetime
 
@@ -14,6 +15,9 @@ from openai import AsyncOpenAI
 
 from backend.models import AgentConfig, ModelProvider
 from backend.mcp import mcp_manager
+
+# Configure logger
+logger = logging.getLogger(__name__)
 
 
 class LLMAgentExecutor(AgentExecutor):
@@ -260,7 +264,7 @@ class LLMAgentExecutor(AgentExecutor):
         
         # Generate response
         try:
-            print(f"[DEBUG] Sending request to {self.config.provider.value} with model {self.config.model}")
+            logger.debug(f"Sending request to {self.config.provider.value} with model {self.config.model}")
             response = await self.openai_client.chat.completions.create(**kwargs)
             
             if not response.choices:
@@ -270,10 +274,10 @@ class LLMAgentExecutor(AgentExecutor):
                 raise RuntimeError("Empty content in response")
             
             result = response.choices[0].message.content
-            print(f"[DEBUG] Received response: {result[:100]}...")
+            logger.debug(f"Received response: {result[:100]}...")
             return result
         except Exception as e:
-            print(f"[ERROR] Failed to generate response: {str(e)}")
+            logger.error(f"Failed to generate response: {str(e)}", exc_info=True)
             raise
     
     async def cleanup(self):

@@ -120,16 +120,18 @@ const handleOverlayClick = (e) => {
 
 ### 调试信息 / Debug Information
 
-后端现在会输出调试日志：
+后端现在会使用标准 Python logging 模块输出调试日志：
 ```
-[DEBUG] Sending request to lmstudio with model google/gemma-3-4b
-[DEBUG] Received response: ...
+DEBUG:backend.agents.a2a_executor:Sending request to lmstudio with model google/gemma-3-4b
+DEBUG:backend.agents.a2a_executor:Received response: ...
 ```
 
 如果出现错误，日志会显示：
 ```
-[ERROR] Failed to generate response: ...
+ERROR:backend.agents.a2a_executor:Failed to generate response: ...
 ```
+
+可以通过设置日志级别来控制输出的详细程度。
 
 ## 文件变更列表 / Changed Files
 

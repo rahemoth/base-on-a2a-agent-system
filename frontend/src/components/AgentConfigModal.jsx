@@ -81,6 +81,9 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
     env: {}
   });
 
+  // Track if mouse was pressed on overlay for proper drag handling
+  const overlayClickStarted = React.useRef(false);
+
   const handleSubmit = (e) => {
     e.preventDefault();
     onSave(config);
@@ -145,19 +148,18 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
 
   // Fix the modal drag bug: prevent closing on mousedown and drag out
   const handleOverlayMouseDown = (e) => {
-    // Only close if the click started and ended on the overlay (not dragged from modal content)
+    // Only set flag if the click started on the overlay (not dragged from modal content)
     if (e.target.classList.contains('modal-overlay')) {
-      e.currentTarget.dataset.clickedOverlay = 'true';
+      overlayClickStarted.current = true;
     }
   };
 
   const handleOverlayClick = (e) => {
     // Only close if we started the click on the overlay
-    if (e.target.classList.contains('modal-overlay') && 
-        e.currentTarget.dataset.clickedOverlay === 'true') {
+    if (e.target.classList.contains('modal-overlay') && overlayClickStarted.current) {
       onClose();
     }
-    delete e.currentTarget.dataset.clickedOverlay;
+    overlayClickStarted.current = false;
   };
 
   return (
