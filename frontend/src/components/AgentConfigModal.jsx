@@ -85,6 +85,18 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
 
   // Track if mouse was pressed on overlay for proper drag handling
   const overlayClickStarted = React.useRef(false);
+  
+  // Track timeout for clearing URL warning
+  const warningTimeoutRef = React.useRef(null);
+
+  // Cleanup warning timeout on unmount
+  React.useEffect(() => {
+    return () => {
+      if (warningTimeoutRef.current) {
+        clearTimeout(warningTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Helper function to clean and validate base URL
   const handleBaseUrlChange = (value) => {
@@ -93,16 +105,19 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
     
     if (cleanedUrl && cleanedUrl.endsWith('/v1')) {
       // Auto-remove /v1 suffix and show warning
-      cleanedUrl = cleanedUrl.slice(0, -3);
+      cleanedUrl = cleanedUrl.replace(/\/v1$/, '');
       warning = '⚠️ 已自动移除 /v1 后缀 - OpenAI SDK 会自动添加';
     }
     
     setUrlWarning(warning);
     setConfig({ ...config, api_base_url: cleanedUrl });
     
-    // Clear warning after 3 seconds
+    // Clear warning after 3 seconds, clearing any previous timeout
     if (warning) {
-      setTimeout(() => setUrlWarning(''), 3000);
+      if (warningTimeoutRef.current) {
+        clearTimeout(warningTimeoutRef.current);
+      }
+      warningTimeoutRef.current = setTimeout(() => setUrlWarning(''), 3000);
     }
   };
 
