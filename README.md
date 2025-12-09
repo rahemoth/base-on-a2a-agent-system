@@ -1,11 +1,11 @@
-# A2A 多代理协作系统
+# A2A 多agent协作系统
 
-一个使用**A2A Python SDK**（[a2a-sdk](https://github.com/a2aproject/a2a-python)）构建的复杂多代理协作系统，实现 Google 的 Agent2Agent (A2A) 协议，支持 Model Context Protocol (MCP）。
+一个使用**A2A Python SDK**（[a2a-sdk](https://github.com/a2aproject/a2a-python)）构建的复杂多agent协作系统，实现 Google 的 Agent2Agent (A2A) 协议，支持 Model Context Protocol (MCP）。
 
 ## 功能
 
-🤖 **多代理系统**
-- 创建和管理多个 AI 代理
+🤖 **多agent系统**
+- 创建和管理多个 AI agent
 - **使用 A2A SDK 构建 (a2a-sdk v0.3.20+)**
 - 符合 A2A 协议
 - 支持多种 AI 模型：
@@ -17,7 +17,7 @@
 - **每个代理独立 API 端点配置** 以实现灵活的大模型服务器设置
 
 🤝 **多代理协作**
-- **交互式协作界面** 用于协调多个代理
+- **交互式协作界面** 用于协调多个agent
 - 通过直观界面选择代理并定义协作任务
 - 实时可视化代理讨论和贡献
 - 基于轮次的协作，支持配置迭代次数
