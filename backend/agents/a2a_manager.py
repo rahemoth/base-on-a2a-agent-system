@@ -285,7 +285,10 @@ class A2AAgentManager:
             # Get responses from all agents
             for idx, agent_id in enumerate(agent_ids):
                 agent_metadata = self.agent_metadata.get(agent_id)
-                agent_name = agent_metadata["config"].name if agent_metadata else agent_id
+                if agent_metadata and "config" in agent_metadata:
+                    agent_name = agent_metadata["config"].name
+                else:
+                    agent_name = agent_id
                 
                 # Customize message for each agent
                 if idx == 0 and round_num == 0:
