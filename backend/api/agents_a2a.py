@@ -1,6 +1,7 @@
 """
 FastAPI routes for A2A-compliant agent management and A2A protocol endpoints
 """
+import logging
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse, JSONResponse
 from typing import List, Optional
@@ -15,6 +16,10 @@ from backend.models import (
     AgentCollaboration,
 )
 from backend.agents.a2a_manager import a2a_agent_manager
+from backend.utils.a2a_utils import extract_text_from_parts
+
+# Initialize logger at module level
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/agents", tags=["agents"])
 
@@ -91,6 +96,8 @@ async def delete_agent(agent_id: str):
 @router.post("/message")
 async def send_message(agent_message: AgentMessage):
     """Send a message to an agent (legacy endpoint)"""
+    logger.debug(f"Received message for agent {agent_message.agent_id}")
+    
     try:
         # Use A2A manager to send message
         response = await a2a_agent_manager.send_message(
@@ -98,16 +105,17 @@ async def send_message(agent_message: AgentMessage):
             agent_message.message,
         )
         
-        # Extract text from response
-        text_response = ""
-        for part in response.parts:
-            if isinstance(part, types.TextPart):
-                text_response += part.text
+        # Extract text from response using centralized utility
+        text_response = extract_text_from_parts(response.parts)
+        
+        logger.debug(f"Returning response to client")
         
         return {"response": text_response}
     except ValueError as e:
+        logger.error(f"Agent not found: {str(e)}")
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
+        logger.error(f"Error processing message: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 

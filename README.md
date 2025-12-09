@@ -55,6 +55,8 @@
 
 ## 快速开始
 
+> **注意**: 如果你遇到 agent 无法响应的问题，请查看 [LM Studio 集成修复文档](docs/LM_STUDIO_FIX.md) 了解详情。
+
 ### 前置要求
 - Python 3.10+
 - Node.js 18+
@@ -369,6 +371,36 @@ npm run build
 ## 许可证
 
 本项目开源，采用 MIT 许可证。
+
+## 故障排除
+
+### Agent 无响应或返回空消息
+**问题**: Agent 创建成功但发送消息后没有响应或返回空内容。
+
+**解决方案**: 这通常是因为 LLM 服务未运行或配置不正确。请：
+1. 确保 LM Studio/LocalAI 等本地服务正在运行
+2. 检查 API 端点配置是否正确（默认 LM Studio: `http://localhost:1234/v1`）
+3. 查看后端日志中的连接错误
+4. 参阅 [LM Studio 集成修复文档](docs/LM_STUDIO_FIX.md)
+
+### 连接错误 (Connection Error)
+**问题**: 后端日志显示 "Connection error" 或 "All connection attempts failed"
+
+**解决方案**:
+1. 确认 LM Studio 服务器已启动并加载了模型
+2. 验证端口是否正确（默认 1234）
+3. 检查防火墙设置是否阻止了连接
+4. 尝试直接访问 `http://localhost:1234/v1/models` 验证 API 是否可访问
+
+### 空响应内容 (Empty content in response)
+**问题**: API 返回 "Empty content in response" 错误
+
+**解决方案**:
+1. 确保在 LM Studio 中加载了模型
+2. 检查模型是否正确响应（可以在 LM Studio 中直接测试）
+3. 验证模型名称配置是否与 LM Studio 中的模型匹配
+
+详细故障排除指南请参阅 [文档目录](docs/)。
 
 ## 支持
 

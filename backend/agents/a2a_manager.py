@@ -2,6 +2,7 @@
 A2A-compliant Agent Manager using the official a2a-sdk
 """
 import uuid
+import logging
 from typing import Dict, Optional, List
 from datetime import datetime, timezone
 
@@ -14,6 +15,10 @@ from a2a.server.events import InMemoryQueueManager
 from backend.agents.a2a_executor import LLMAgentExecutor
 from backend.models import AgentConfig, AgentStatus, AgentResponse
 from backend.config import settings
+from backend.utils.a2a_utils import extract_text_from_parts
+
+# Initialize logger at module level
+logger = logging.getLogger(__name__)
 
 
 class A2AAgentManager:
@@ -203,8 +208,11 @@ class A2AAgentManager:
         task_id: Optional[str] = None,
     ) -> types.Message:
         """Send a message to an agent and get response"""
+        logger.debug(f"Sending message to agent {agent_id}")
+        
         handler = self.request_handlers.get(agent_id)
         if not handler:
+            logger.error(f"Agent {agent_id} not found")
             raise ValueError(f"Agent {agent_id} not found")
         
         # Create message
@@ -222,6 +230,8 @@ class A2AAgentManager:
         
         # Call the handler's on_message_send method directly
         response = await handler.on_message_send(params)
+        
+        logger.debug(f"Received response from agent {agent_id}")
         
         return response
     
@@ -311,11 +321,8 @@ class A2AAgentManager:
                 try:
                     response = await self.send_message(agent_id, message_to_send)
                     
-                    # Extract text from response
-                    text_response = ""
-                    for part in response.parts:
-                        if isinstance(part, types.TextPart):
-                            text_response += part.text
+                    # Extract text from response using centralized utility
+                    text_response = extract_text_from_parts(response.parts)
                     
                     collaboration_history.append({
                         "role": "agent",

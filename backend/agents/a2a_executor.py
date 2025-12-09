@@ -15,6 +15,7 @@ from openai import AsyncOpenAI
 
 from backend.models import AgentConfig, ModelProvider
 from backend.mcp import mcp_manager
+from backend.utils.a2a_utils import extract_text_from_parts
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -49,9 +50,14 @@ class LLMAgentExecutor(AgentExecutor):
     
     def _initialize_clients(self):
         """Initialize LLM clients based on configuration"""
+        logger.info(f"Agent {self.agent_id}: Initializing clients for provider: {self.config.provider.value}")
+        
         if self.config.provider == ModelProvider.GOOGLE:
             if self.google_api_key:
                 self.google_client = genai.Client(api_key=self.google_api_key)
+                logger.info(f"Agent {self.agent_id}: Google client initialized")
+            else:
+                logger.warning(f"Agent {self.agent_id}: Google API key not provided")
         elif self.config.provider in [ModelProvider.OPENAI, ModelProvider.LMSTUDIO, 
                                       ModelProvider.LOCALAI, ModelProvider.OLLAMA, 
                                       ModelProvider.TEXTGEN_WEBUI, ModelProvider.CUSTOM]:
@@ -61,12 +67,15 @@ class LLMAgentExecutor(AgentExecutor):
             # Determine base URL based on provider
             if self.config.api_base_url:
                 base_url = self.config.api_base_url
+                logger.debug(f"Agent {self.agent_id}: Using api_base_url from config: {base_url}")
             elif self.config.openai_base_url:
                 # Backward compatibility
                 base_url = self.config.openai_base_url
+                logger.debug(f"Agent {self.agent_id}: Using openai_base_url from config: {base_url}")
             elif self.config.provider == ModelProvider.OPENAI:
                 # Use official OpenAI API (no custom base URL)
                 base_url = None
+                logger.debug(f"Agent {self.agent_id}: Using official OpenAI API")
             else:
                 # Default URLs for each local provider
                 default_urls = {
@@ -77,14 +86,19 @@ class LLMAgentExecutor(AgentExecutor):
                     ModelProvider.CUSTOM: None
                 }
                 base_url = default_urls.get(self.config.provider)
+                logger.debug(f"Agent {self.agent_id}: Using default URL for {self.config.provider.value}: {base_url}")
             
             if base_url:
                 self.openai_client = AsyncOpenAI(
                     api_key=api_key,
                     base_url=base_url
                 )
+                logger.info(f"Agent {self.agent_id}: OpenAI client initialized with base_url: {base_url}")
             else:
                 self.openai_client = AsyncOpenAI(api_key=api_key)
+                logger.info(f"Agent {self.agent_id}: OpenAI client initialized with default endpoint")
+        else:
+            logger.error(f"Agent {self.agent_id}: Unsupported provider: {self.config.provider}")
     
     async def initialize_mcp(self):
         """Initialize MCP servers if configured"""
@@ -103,6 +117,7 @@ class LLMAgentExecutor(AgentExecutor):
         Execute agent logic for an incoming request.
         This is the main entry point called by the A2A framework.
         """
+        logger.debug(f"Agent {self.agent_id}: Processing message")
         try:
             # Get the incoming message
             message = request_context.message
@@ -112,6 +127,7 @@ class LLMAgentExecutor(AgentExecutor):
             
             if not text_content:
                 # No text content, send error
+                logger.warning(f"Agent {self.agent_id}: No text content found in message")
                 error_message = self._create_message(
                     "No text content found in the message.",
                     context_id=message.context_id,
@@ -121,6 +137,7 @@ class LLMAgentExecutor(AgentExecutor):
                 return
             
             # Generate response using LLM
+            logger.info(f"Agent {self.agent_id}: Generating response using {self.config.provider.value} with model {self.config.model}")
             if self.config.provider == ModelProvider.GOOGLE:
                 response_text = await self._generate_google(text_content, request_context)
             elif self.config.provider in [ModelProvider.OPENAI, ModelProvider.LMSTUDIO, 
@@ -129,6 +146,8 @@ class LLMAgentExecutor(AgentExecutor):
                 response_text = await self._generate_openai(text_content, request_context)
             else:
                 raise ValueError(f"Unsupported provider: {self.config.provider}")
+            
+            logger.debug(f"Agent {self.agent_id}: Generated response ({len(response_text)} chars)")
             
             # Create and publish response message
             response_message = self._create_message(
@@ -141,6 +160,7 @@ class LLMAgentExecutor(AgentExecutor):
             
         except Exception as e:
             # Handle errors
+            logger.error(f"Agent {self.agent_id}: Error processing message: {str(e)}", exc_info=True)
             error_message = self._create_message(
                 f"Error processing message: {str(e)}",
                 context_id=request_context.message.context_id,
@@ -154,12 +174,12 @@ class LLMAgentExecutor(AgentExecutor):
         pass
     
     def _extract_text_from_message(self, message: types.Message) -> str:
-        """Extract text content from message parts"""
-        text_parts = []
-        for part in message.parts:
-            if isinstance(part, types.TextPart):
-                text_parts.append(part.text)
-        return " ".join(text_parts)
+        """Extract text content from message parts
+        
+        Uses centralized utility function to ensure consistent behavior
+        across the application when extracting text from A2A messages.
+        """
+        return extract_text_from_parts(message.parts)
     
     def _create_message(
         self,
@@ -224,6 +244,7 @@ class LLMAgentExecutor(AgentExecutor):
     async def _generate_openai(self, text: str, request_context: RequestContext) -> str:
         """Generate response using OpenAI"""
         if not self.openai_client:
+            logger.error(f"Agent {self.agent_id}: OpenAI client not initialized")
             raise RuntimeError("OpenAI client not initialized")
         
         # Build messages array
@@ -264,20 +285,24 @@ class LLMAgentExecutor(AgentExecutor):
         
         # Generate response
         try:
-            logger.debug(f"Sending request to {self.config.provider.value} with model {self.config.model}")
+            logger.debug(f"Agent {self.agent_id}: Calling {self.config.provider.value} API (model: {self.config.model})")
             response = await self.openai_client.chat.completions.create(**kwargs)
             
             if not response.choices:
-                raise RuntimeError("No response choices returned from API")
+                error_msg = "No response choices returned from API"
+                logger.error(f"Agent {self.agent_id}: {error_msg}")
+                raise RuntimeError(error_msg)
             
             if not response.choices[0].message.content:
-                raise RuntimeError("Empty content in response")
+                error_msg = "Empty content in response"
+                logger.error(f"Agent {self.agent_id}: {error_msg}")
+                raise RuntimeError(error_msg)
             
             result = response.choices[0].message.content
-            logger.debug(f"Received response: {result[:100]}...")
+            logger.debug(f"Agent {self.agent_id}: Received response from API")
             return result
         except Exception as e:
-            logger.error(f"Failed to generate response: {str(e)}", exc_info=True)
+            logger.error(f"Agent {self.agent_id}: Failed to generate response: {str(e)}", exc_info=True)
             raise
     
     async def cleanup(self):
