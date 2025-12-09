@@ -211,7 +211,7 @@ class A2AAgentManager:
         message = types.Message(
             kind="message",
             message_id=str(uuid.uuid4()),
-            role=types.Role.USER,
+            role=types.Role.user,
             parts=[types.TextPart(kind="text", text=message_text)],
             context_id=context_id,
             task_id=task_id,
@@ -219,19 +219,11 @@ class A2AAgentManager:
         
         # Send message through handler
         params = types.MessageSendParams(message=message)
-        request = types.SendMessageRequest(
-            jsonrpc="2.0",
-            id=str(uuid.uuid4()),
-            method="sendMessage",
-            params=params
-        )
         
-        response = await handler.send_message(request)
+        # Call the handler's on_message_send method directly
+        response = await handler.on_message_send(params)
         
-        if isinstance(response, types.SendMessageSuccessResponse):
-            return response.result
-        else:
-            raise ValueError(f"Error sending message: {response.error}")
+        return response
     
     async def collaborate_agents(
         self,
