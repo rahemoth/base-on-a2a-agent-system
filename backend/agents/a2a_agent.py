@@ -73,11 +73,12 @@ class A2AAgent:
                     base_url = self.config.openai_base_url
                 else:
                     # Default URLs for each provider
+                    # Note: OpenAI SDK automatically adds /v1 to the base_url, so don't include it here
                     default_urls = {
-                        ModelProvider.LMSTUDIO: "http://localhost:1234/v1",
-                        ModelProvider.LOCALAI: "http://localhost:8080/v1",
-                        ModelProvider.OLLAMA: "http://localhost:11434/v1",
-                        ModelProvider.TEXTGEN_WEBUI: "http://localhost:5000/v1",
+                        ModelProvider.LMSTUDIO: "http://localhost:1234",
+                        ModelProvider.LOCALAI: "http://localhost:8080",
+                        ModelProvider.OLLAMA: "http://localhost:11434",
+                        ModelProvider.TEXTGEN_WEBUI: "http://localhost:5000",
                         ModelProvider.CUSTOM: None
                     }
                     base_url = default_urls.get(self.config.provider)

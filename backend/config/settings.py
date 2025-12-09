@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     openai_api_key: Optional[str] = None
     
     # OpenAI Configuration (supports OpenAI-compatible APIs like LM Studio)
-    openai_base_url: Optional[str] = None  # e.g., http://localhost:1234/v1 for LM Studio
+    openai_base_url: Optional[str] = None  # e.g., http://localhost:1234 for LM Studio (SDK adds /v1 automatically)
     
     # Server Configuration
     host: str = "0.0.0.0"

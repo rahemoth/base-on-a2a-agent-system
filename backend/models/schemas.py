@@ -45,7 +45,7 @@ class AgentConfig(BaseModel):
     max_tokens: Optional[int] = Field(None, description="Maximum tokens to generate")
     google_api_key: Optional[str] = Field(None, description="Google API key for this agent (overrides global setting)")
     openai_api_key: Optional[str] = Field(None, description="OpenAI API key for this agent (overrides global setting)")
-    openai_base_url: Optional[str] = Field(None, description="Custom OpenAI-compatible API base URL (e.g., http://localhost:1234/v1 for LMStudio)")
+    openai_base_url: Optional[str] = Field(None, description="Custom OpenAI-compatible API base URL (e.g., http://localhost:1234 for LMStudio)")
     api_base_url: Optional[str] = Field(None, description="API base URL for local/custom providers")
     mcp_servers: List[MCPServerConfig] = Field(default_factory=list, description="MCP servers configuration")
     capabilities: List[str] = Field(default_factory=list, description="Agent capabilities")

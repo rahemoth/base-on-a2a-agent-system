@@ -39,7 +39,7 @@ const PROVIDERS = {
     label: '本地 AI 模型 (LM Studio, Ollama 等)',
     requiresApiKey: false,
     requiresModelInput: true,
-    defaultBaseUrl: 'http://localhost:1234/v1',
+    defaultBaseUrl: 'http://localhost:1234',
     defaultModel: 'local-model',
     isLocal: true
   }
@@ -81,8 +81,45 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
     env: {}
   });
 
+  const [urlWarning, setUrlWarning] = useState('');
+
   // Track if mouse was pressed on overlay for proper drag handling
   const overlayClickStarted = React.useRef(false);
+  
+  // Track timeout for clearing URL warning
+  const warningTimeoutRef = React.useRef(null);
+
+  // Cleanup warning timeout on unmount
+  React.useEffect(() => {
+    return () => {
+      if (warningTimeoutRef.current) {
+        clearTimeout(warningTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Helper function to clean and validate base URL
+  const handleBaseUrlChange = (value) => {
+    let cleanedUrl = value || null;
+    let warning = '';
+    
+    if (cleanedUrl && cleanedUrl.endsWith('/v1')) {
+      // Auto-remove /v1 suffix and show warning
+      cleanedUrl = cleanedUrl.replace(/\/v1$/, '');
+      warning = '⚠️ 已自动移除 /v1 后缀 - OpenAI SDK 会自动添加';
+    }
+    
+    setUrlWarning(warning);
+    setConfig({ ...config, api_base_url: cleanedUrl });
+    
+    // Clear warning after 3 seconds, clearing any previous timeout
+    if (warning) {
+      if (warningTimeoutRef.current) {
+        clearTimeout(warningTimeoutRef.current);
+      }
+      warningTimeoutRef.current = setTimeout(() => setUrlWarning(''), 3000);
+    }
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -279,15 +316,20 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
                 <input
                   type="text"
                   value={config.api_base_url || ''}
-                  onChange={(e) => setConfig({ ...config, api_base_url: e.target.value || null })}
-                  placeholder={providerInfo.defaultBaseUrl || 'http://localhost:8080/v1'}
+                  onChange={(e) => handleBaseUrlChange(e.target.value)}
+                  placeholder={providerInfo.defaultBaseUrl || 'http://localhost:8080'}
                   required
                 />
                 <small className="form-hint">
                   {providerInfo.defaultBaseUrl 
-                    ? `默认值: ${providerInfo.defaultBaseUrl}` 
-                    : '输入您的 OpenAI 兼容 API 端点的基础 URL'}
+                    ? `默认值: ${providerInfo.defaultBaseUrl} (不要包含 /v1 后缀)` 
+                    : '输入您的 OpenAI 兼容 API 端点的基础 URL (不要包含 /v1 后缀)'}
                 </small>
+                {urlWarning && (
+                  <small className="form-hint" style={{ color: '#ff9800', fontWeight: 'bold' }}>
+                    {urlWarning}
+                  </small>
+                )}
               </div>
             )}
 

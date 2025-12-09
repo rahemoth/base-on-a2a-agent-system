@@ -86,10 +86,12 @@ curl -X POST http://localhost:8000/api/agents/ \
       "model": "your-model-name",
       "system_prompt": "You are a helpful assistant.",
       "temperature": 0.7,
-      "openai_base_url": "http://localhost:1234/v1"
+      "openai_base_url": "http://localhost:1234"
     }
   }'
 ```
+
+**Note**: Do NOT include `/v1` in the base URL - the OpenAI SDK adds it automatically.
 
 3. Send a message (replace `AGENT_ID` with the ID from step 2):
 ```bash
@@ -142,20 +144,25 @@ This is expected and correct - it means the code is trying to call the LLM.
 When creating an agent via the UI or API, set:
 - **Provider**: OpenAI (GPT) or LM Studio
 - **Model**: The model name loaded in LM Studio
-- **OpenAI API Base URL**: `http://localhost:1234/v1`
+- **OpenAI API Base URL**: `http://localhost:1234` (without `/v1` - SDK adds it automatically)
 - **API Key**: Any string (e.g., "lm-studio" - local models don't validate the key)
 
 ### Option 2: Global Configuration
 Add to your `.env` file:
 ```env
 OPENAI_API_KEY=lm-studio
-OPENAI_BASE_URL=http://localhost:1234/v1
+OPENAI_BASE_URL=http://localhost:1234
 ```
+
+**Important**: Do NOT include `/v1` in the base URL. The OpenAI SDK automatically appends `/v1` to the base URL.
 
 ## Troubleshooting
 
 ### Issue: "Connection error"
 **Solution**: Make sure LM Studio is running and the server is started (usually on port 1234)
+
+### Issue: 502 Bad Gateway
+**Solution**: This usually happens when the base URL includes `/v1` suffix. Remove `/v1` from your base URL configuration - the OpenAI SDK adds it automatically. Use `http://localhost:1234` instead of `http://localhost:1234/v1`.
 
 ### Issue: "Empty content in response"
 **Solution**: Check that a model is loaded in LM Studio and is responding. Try a simple request directly to LM Studio's API to verify it's working.
@@ -163,7 +170,7 @@ OPENAI_BASE_URL=http://localhost:1234/v1
 ### Issue: Still getting empty responses
 **Solution**: 
 1. Check the backend logs for errors
-2. Verify the base URL is correct (default: `http://localhost:1234/v1`)
+2. Verify the base URL is correct (default: `http://localhost:1234`, NOT `http://localhost:1234/v1`)
 3. Make sure you're using the latest version of the code with this fix
 
 ## Technical Details
