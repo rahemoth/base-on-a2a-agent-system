@@ -232,7 +232,26 @@ class A2AAgentManager:
         coordinator_id: Optional[str] = None,
         max_rounds: int = 5
     ) -> List[Dict]:
-        """Facilitate collaboration between agents using A2A protocol"""
+        """
+        Facilitate collaboration between agents using A2A protocol
+        
+        Args:
+            agent_ids: List of agent IDs to collaborate. Must contain at least one agent.
+            task: The task description for agents to collaborate on.
+            coordinator_id: Optional ID of the agent to coordinate. If not specified, 
+                          the first agent in agent_ids will be used as coordinator.
+            max_rounds: Maximum number of collaboration rounds. Default is 5.
+        
+        Returns:
+            List[Dict]: Collaboration history with the following structure for each entry:
+                - role: "system" or "agent"
+                - content: The message content
+                - metadata: Dict containing agent_id, agent_name, and optionally "error": True
+                - timestamp: ISO format timestamp string
+        
+        Raises:
+            ValueError: If no agents are specified or if any agent ID is not found.
+        """
         if not agent_ids:
             raise ValueError("No agents specified for collaboration")
         

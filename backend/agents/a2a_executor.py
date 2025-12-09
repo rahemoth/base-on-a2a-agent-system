@@ -161,7 +161,7 @@ class LLMAgentExecutor(AgentExecutor):
         if hasattr(request_context, 'task') and request_context.task:
             # Get messages from task history
             for msg in request_context.task.messages:
-                role = "user" if msg.role == types.Role.USER else "model"
+                role = "user" if msg.role == types.Role.user else "model"
                 msg_text = self._extract_text_from_message(msg)
                 if msg_text:
                     contents.append(genai.types.Content(
@@ -211,7 +211,7 @@ class LLMAgentExecutor(AgentExecutor):
         # Add context messages if available
         if hasattr(request_context, 'task') and request_context.task:
             for msg in request_context.task.messages:
-                role = "user" if msg.role == types.Role.USER else "assistant"
+                role = "user" if msg.role == types.Role.user else "assistant"
                 msg_text = self._extract_text_from_message(msg)
                 if msg_text:
                     messages.append({
