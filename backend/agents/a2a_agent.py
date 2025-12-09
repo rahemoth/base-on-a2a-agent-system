@@ -339,18 +339,18 @@ class A2AAgent:
                 response = await self.openai_client.chat.completions.create(**kwargs)
                 
                 if not response.choices:
-                    raise RuntimeError("No response choices returned from API")
+                    raise RuntimeError(f"No response choices returned from {self.config.provider.value} (model: {self.config.model})")
                 
                 if not response.choices[0].message:
-                    raise RuntimeError("No message in response")
+                    raise RuntimeError(f"No message in response from {self.config.provider.value} (model: {self.config.model})")
                 
                 # Handle tool calls if present
                 message_obj = response.choices[0].message
                 
                 # Check for empty content only if there are no tool calls
                 if not message_obj.content and not message_obj.tool_calls:
-                    logger.warning(f"Empty content and no tool calls in response from {self.config.provider.value}")
-                    raise RuntimeError("Empty content in response with no tool calls")
+                    logger.warning(f"Empty content and no tool calls in response from {self.config.provider.value} (model: {self.config.model})")
+                    raise RuntimeError(f"Empty content in response with no tool calls from {self.config.provider.value} (model: {self.config.model})")
                 
                 if message_obj.content:
                     logger.debug(f"Received response: {message_obj.content[:100]}...")
@@ -396,8 +396,10 @@ class A2AAgent:
                         final_kwargs["max_tokens"] = self.config.max_tokens
                     
                     response = await self.openai_client.chat.completions.create(**final_kwargs)
+                    message_obj = response.choices[0].message
                 
-                result = response.choices[0].message.content
+                # Get result content, use empty string if None (e.g., for tool-only responses)
+                result = message_obj.content or ""
                 
                 # Store in conversation history
                 self.conversation_history.append(Message(
