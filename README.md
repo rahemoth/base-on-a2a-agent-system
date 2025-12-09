@@ -13,6 +13,7 @@ A sophisticated multi-agent collaboration system built with the **official A2A P
   - **OpenAI GPT**: GPT-4, GPT-4 Turbo, GPT-4o, GPT-3.5 Turbo
   - **Local LLMs**: LM Studio, LocalAI, Ollama, and more via OpenAI-compatible APIs
 - Customizable agent configurations
+- **Per-agent API key configuration (NEW!)** - different API keys for each agent
 - **Per-agent API endpoint configuration** for flexible LLM server setups
 
 🤝 **Multi-Agent Collaboration (NEW!)**
@@ -120,6 +121,11 @@ The backend API documentation is available at: `http://localhost:8000/docs`
    - **Description**: Describe the agent's purpose
    - **Provider**: Choose between Google (Gemini) or OpenAI (GPT)
    - **Model**: Choose a model from the selected provider
+   - **API Key** (Optional - NEW!): Configure per-agent API key
+     - **Google API Key**: For Google (Gemini) provider
+     - **OpenAI API Key**: For OpenAI (GPT) provider
+     - Leave empty to use global API key from `.env` file
+     - Per-agent key overrides global setting
    - **OpenAI API Base URL** (OpenAI only): Configure custom API endpoint
      - Select from preset local LLM servers (LM Studio, LocalAI, Ollama, etc.)
      - Or enter a custom URL for any OpenAI-compatible API
