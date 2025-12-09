@@ -51,7 +51,6 @@ This document provides practical examples of using the new multi-agent collabora
 ```
 
 **Note**: Base URLs should NOT include `/v1` suffix - the OpenAI SDK adds it automatically.
-```
 
 ### Step 3: Start Collaboration
 

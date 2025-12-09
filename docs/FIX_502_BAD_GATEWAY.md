@@ -177,9 +177,9 @@ for agent in agents:
     agent_id = agent['id']
     config = agent['config']
     
-    # Check if base URL needs updating
-    if config.get('openai_base_url') and '/v1' in config['openai_base_url']:
-        config['openai_base_url'] = config['openai_base_url'].replace('/v1', '')
+    # Check if base URL needs updating (only if it ends with /v1)
+    if config.get('openai_base_url') and config['openai_base_url'].endswith('/v1'):
+        config['openai_base_url'] = config['openai_base_url'].removesuffix('/v1')
         
         # Update the agent
         requests.put(
