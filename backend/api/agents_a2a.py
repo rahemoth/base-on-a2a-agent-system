@@ -12,6 +12,7 @@ from backend.models import (
     AgentResponse,
     AgentMessage,
     AgentUpdate,
+    AgentCollaboration,
 )
 from backend.agents.a2a_manager import a2a_agent_manager
 
@@ -104,6 +105,26 @@ async def send_message(agent_message: AgentMessage):
                 text_response += part.text
         
         return {"response": text_response}
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/collaborate")
+async def collaborate(collaboration: AgentCollaboration):
+    """Start a collaboration between multiple agents"""
+    try:
+        result = await a2a_agent_manager.collaborate_agents(
+            agent_ids=collaboration.agents,
+            task=collaboration.task,
+            coordinator_id=collaboration.coordinator_agent,
+            max_rounds=collaboration.max_rounds
+        )
+        
+        return {
+            "collaboration_history": result
+        }
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:

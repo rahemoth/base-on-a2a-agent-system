@@ -233,6 +233,91 @@ class A2AAgentManager:
         else:
             raise ValueError(f"Error sending message: {response.error}")
     
+    async def collaborate_agents(
+        self,
+        agent_ids: List[str],
+        task: str,
+        coordinator_id: Optional[str] = None,
+        max_rounds: int = 5
+    ) -> List[Dict]:
+        """Facilitate collaboration between agents using A2A protocol"""
+        if not agent_ids:
+            raise ValueError("No agents specified for collaboration")
+        
+        # Validate all agents exist
+        for agent_id in agent_ids:
+            if agent_id not in self.agents:
+                raise ValueError(f"Agent {agent_id} not found")
+        
+        # Use first agent as coordinator if not specified
+        if coordinator_id:
+            if coordinator_id not in self.agents:
+                raise ValueError(f"Coordinator agent {coordinator_id} not found")
+        else:
+            coordinator_id = agent_ids[0]
+        
+        collaboration_history = []
+        
+        # Initialize collaboration task
+        collaboration_history.append({
+            "role": "system",
+            "content": f"Starting collaboration on task: {task}",
+            "metadata": {},
+            "timestamp": datetime.utcnow().isoformat()
+        })
+        
+        # Initial message to coordinator
+        current_message = f"Task: {task}\n\nYou are coordinating a collaboration with {len(agent_ids) - 1} other agents. Please provide your initial thoughts and approach."
+        
+        # Collaboration rounds
+        for round_num in range(max_rounds):
+            # Get responses from all agents
+            for idx, agent_id in enumerate(agent_ids):
+                agent_metadata = self.agent_metadata.get(agent_id)
+                agent_name = agent_metadata["config"].name if agent_metadata else agent_id
+                
+                # Customize message for each agent
+                if idx == 0 and round_num == 0:
+                    message_to_send = current_message
+                else:
+                    # Build context from previous responses
+                    previous_responses = "\n\n".join([
+                        f"{msg['metadata'].get('agent_name', 'Unknown')}: {msg['content']}"
+                        for msg in collaboration_history
+                        if msg['role'] == 'agent' and msg.get('metadata', {}).get('agent_id') != agent_id
+                    ][-3:])  # Last 3 responses for context
+                    
+                    if previous_responses:
+                        message_to_send = f"Previous contributions:\n{previous_responses}\n\nBased on the discussion so far, what is your contribution to the task?"
+                    else:
+                        message_to_send = f"Task: {task}\n\nPlease provide your thoughts and contribution."
+                
+                # Send message to agent
+                try:
+                    response = await self.send_message(agent_id, message_to_send)
+                    
+                    # Extract text from response
+                    text_response = ""
+                    for part in response.parts:
+                        if isinstance(part, types.TextPart):
+                            text_response += part.text
+                    
+                    collaboration_history.append({
+                        "role": "agent",
+                        "content": f"[{agent_name}]: {text_response}",
+                        "metadata": {"agent_id": agent_id, "agent_name": agent_name},
+                        "timestamp": datetime.utcnow().isoformat()
+                    })
+                except Exception as e:
+                    collaboration_history.append({
+                        "role": "agent",
+                        "content": f"[{agent_name}]: Error - {str(e)}",
+                        "metadata": {"agent_id": agent_id, "agent_name": agent_name, "error": True},
+                        "timestamp": datetime.utcnow().isoformat()
+                    })
+        
+        return collaboration_history
+    
     async def cleanup_all(self):
         """Cleanup all agents"""
         for agent in self.agents.values():
