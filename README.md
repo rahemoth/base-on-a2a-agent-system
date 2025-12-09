@@ -1,22 +1,22 @@
 # A2A 多代理协作系统
 
-一个使用**官方 A2A Python SDK**（[a2a-sdk](https://github.com/a2aproject/a2a-python)）构建的复杂多代理协作系统，实现 Google 的 Agent2Agent (A2A) 协议，支持 Model Context Protocol (MCP)，并拥有漂亮、现代的网页界面。
+一个使用**A2A Python SDK**（[a2a-sdk](https://github.com/a2aproject/a2a-python)）构建的复杂多代理协作系统，实现 Google 的 Agent2Agent (A2A) 协议，支持 Model Context Protocol (MCP）。
 
 ## 功能
 
 🤖 **多代理系统**
 - 创建和管理多个 AI 代理
-- **使用官方 A2A SDK 构建 (a2a-sdk v0.3.20+)**
-- 完全符合 A2A 协议
+- **使用 A2A SDK 构建 (a2a-sdk v0.3.20+)**
+- 符合 A2A 协议
 - 支持多种 AI 模型：
   - **Google Gemini**：2.0 Flash、1.5 Pro、1.5 Flash
   - **OpenAI GPT**：GPT-4、GPT-4 Turbo、GPT-4o、GPT-3.5 Turbo
   - **本地大模型**：LM Studio、LocalAI、Ollama 等通过 OpenAI 兼容 API
 - 可自定义代理配置
-- **每个代理独立 API 密钥配置 (NEW!)** - 不同代理使用不同密钥
+- **每个代理独立 API 密钥配置** - 不同代理使用不同密钥
 - **每个代理独立 API 端点配置** 以实现灵活的大模型服务器设置
 
-🤝 **多代理协作 (NEW!)**
+🤝 **多代理协作**
 - **交互式协作界面** 用于协调多个代理
 - 通过直观界面选择代理并定义协作任务
 - 实时可视化代理讨论和贡献
@@ -37,18 +37,11 @@
 - 对话历史跟踪
 - 支持流式响应
 
-🎨 **漂亮的界面**
-- 现代、响应式设计
-- 为长时间使用优化的深色主题
-- 直观的代理管理
-- 实时状态更新
-- **LM Studio URL 配置**，内置常用本地大模型服务器预设
-
 ## 架构
 
 ### 后端 (Python/FastAPI)
-- **A2A SDK**：官方 Agent2Agent 协议 Python SDK
-- **FastAPI**：高性能异步 API 服务器
+- **A2A SDK**： Agent2Agent 协议 Python SDK
+- **FastAPI**： API 服务器
 - **Google GenAI**：Gemini 模型提供商
 - **OpenAI**：GPT 模型提供商
 - **MCP Client**：Model Context Protocol 集成
@@ -121,7 +114,7 @@ npm run dev
    - **Description**：描述代理的用途
    - **Provider**：选择 Google (Gemini) 或 OpenAI (GPT)
    - **Model**：从选中提供商中选择模型
-   - **API Key** (可选 - NEW!)：为单个代理配置 API 密钥
+   - **API Key** (可选)：为单个代理配置 API 密钥
      - **Google API Key**：用于 Google (Gemini) 提供商
      - **OpenAI API Key**：用于 OpenAI (GPT) 提供商
      - 留空则使用 .env 文件中的全局密钥
@@ -148,7 +141,7 @@ npm run dev
 3. 按回车或点击发送按钮
 4. 代理将使用 A2A 协议回复
 
-### 多代理协作 (NEW!)
+### 多代理协作
 
 利用多个代理一起解决复杂任务：
 
@@ -329,7 +322,7 @@ ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
 ```
 base-on-a2a-agent-system/
 ├── backend/
-│   ├── agents/          # 代理实现
+│   ├── agents/          # agent实现
 │   ├── api/             # FastAPI 路由
 │   ├── config/          # 配置
 │   ├── mcp/             # MCP 集成
@@ -386,5 +379,3 @@ npm run build
 - [A2A Project](https://a2a-protocol.org/) - 官方 Agent2Agent 协议
 - [A2A Python SDK](https://github.com/a2aproject/a2a-python) - 官方 Python SDK
 - Model Context Protocol (MCP) 社区
-- FastAPI 框架
-- React 和 Vite 团队
