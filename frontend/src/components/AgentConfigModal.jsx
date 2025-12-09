@@ -144,7 +144,12 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
     }
     
     setConfig(newConfig);
-    setCustomModel('');
+    // For local providers, initialize customModel with the default model name
+    if (providerInfo.models[0]?.value === 'custom') {
+      setCustomModel(providerInfo.defaultModel);
+    } else {
+      setCustomModel('');
+    }
   };
 
   const handleModelChange = (newModel) => {
@@ -163,7 +168,7 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
 
   const currentProvider = PROVIDERS[config.provider] || PROVIDERS.google;
   const showCustomModelInput = config.model === 'custom' || 
-    (currentProvider.models[0]?.value === 'custom' && customModel);
+    (currentProvider.models[0]?.value === 'custom');
   const isLocalProvider = !currentProvider.requiresApiKey;
 
   return (
