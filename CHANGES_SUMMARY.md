@@ -23,22 +23,36 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# Store base URL during initialization for reliable logging
+async def initialize(self, ...):
+    # ...
+    if base_url_to_use:
+        self.openai_client = AsyncOpenAI(api_key=api_key, base_url=base_url_to_use)
+        self._logged_base_url = base_url_to_use  # Store for logging
+    # ...
+
 async def _send_message_openai(self, message, context=None, stream=False):
     try:
         logger.debug(f"Sending request to {self.config.provider.value} with model {self.config.model}")
-        base_url = getattr(self.openai_client, 'base_url', None)
-        if base_url:
-            logger.debug(f"API base URL: {base_url}")
+        if hasattr(self, '_logged_base_url'):
+            logger.debug(f"API base URL: {self._logged_base_url}")
         
         response = await self.openai_client.chat.completions.create(**kwargs)
         
-        if not response.choices or not response.choices[0].message.content:
-            raise RuntimeError("Empty content in response")
+        # Enhanced validation with bounds checking
+        if not response.choices or len(response.choices) == 0:
+            raise RuntimeError(f"No response choices from {self.config.provider.value}")
         
-        logger.debug(f"Received response: {response.choices[0].message.content[:100]}...")
+        if not response.choices[0].message:
+            raise RuntimeError(f"No message in response")
+        
+        # Support tool-only responses, use empty string for None content
+        result = response.choices[0].message.content or ""
+        
+        logger.debug(f"Received response: {result[:100]}...")
         # ...
     except Exception as e:
-        logger.error(f"Failed to generate response: {str(e)}", exc_info=True)
+        logger.error(f"Failed to generate response from {self.config.provider.value}: {str(e)}", exc_info=True)
         raise
 ```
 

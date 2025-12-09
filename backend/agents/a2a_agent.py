@@ -352,8 +352,9 @@ class A2AAgent:
                 
                 # Check for empty content only if there are no tool calls
                 if not message_obj.content and not message_obj.tool_calls:
-                    logger.warning(f"Empty content and no tool calls in response from {self.config.provider.value} (model: {self.config.model})")
-                    raise RuntimeError(f"Empty content in response with no tool calls from {self.config.provider.value} (model: {self.config.model})")
+                    error_msg = f"Empty content and no tool calls in response from {self.config.provider.value} (model: {self.config.model})"
+                    logger.warning(error_msg)
+                    raise RuntimeError(error_msg)
                 
                 if message_obj.content:
                     logger.debug(f"Received response: {message_obj.content[:100]}...")
@@ -401,8 +402,12 @@ class A2AAgent:
                     response = await self.openai_client.chat.completions.create(**final_kwargs)
                     message_obj = response.choices[0].message
                 
-                # Get result content, use empty string if None (e.g., for tool-only responses)
-                result = message_obj.content or ""
+                # Get result content
+                # Use empty string if None to handle:
+                # 1. Tool-only responses that may have null content after tool execution
+                # 2. Some models that return null content with tool calls
+                # Empty string is safe for storage in conversation history
+                result = message_obj.content if message_obj.content is not None else ""
                 
                 # Store in conversation history
                 self.conversation_history.append(Message(
