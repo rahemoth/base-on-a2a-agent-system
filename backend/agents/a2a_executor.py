@@ -2,6 +2,7 @@
 A2A Agent Executor implementation using the official a2a-sdk
 """
 import uuid
+import logging
 from typing import Optional, Dict, Any, List
 from datetime import datetime
 
@@ -14,6 +15,9 @@ from openai import AsyncOpenAI
 
 from backend.models import AgentConfig, ModelProvider
 from backend.mcp import mcp_manager
+
+# Configure logger
+logger = logging.getLogger(__name__)
 
 
 class LLMAgentExecutor(AgentExecutor):
@@ -48,17 +52,39 @@ class LLMAgentExecutor(AgentExecutor):
         if self.config.provider == ModelProvider.GOOGLE:
             if self.google_api_key:
                 self.google_client = genai.Client(api_key=self.google_api_key)
-        elif self.config.provider == ModelProvider.OPENAI:
-            if self.openai_api_key:
-                # Priority: 1. Per-agent config, 2. Global config parameter, 3. No custom base URL
-                base_url_to_use = self.config.openai_base_url or self.openai_base_url
-                if base_url_to_use:
-                    self.openai_client = AsyncOpenAI(
-                        api_key=self.openai_api_key,
-                        base_url=base_url_to_use
-                    )
-                else:
-                    self.openai_client = AsyncOpenAI(api_key=self.openai_api_key)
+        elif self.config.provider in [ModelProvider.OPENAI, ModelProvider.LMSTUDIO, 
+                                      ModelProvider.LOCALAI, ModelProvider.OLLAMA, 
+                                      ModelProvider.TEXTGEN_WEBUI, ModelProvider.CUSTOM]:
+            # For OpenAI and all local/custom providers using OpenAI-compatible API
+            api_key = self.openai_api_key or "local-llm-key-not-required"
+            
+            # Determine base URL based on provider
+            if self.config.api_base_url:
+                base_url = self.config.api_base_url
+            elif self.config.openai_base_url:
+                # Backward compatibility
+                base_url = self.config.openai_base_url
+            elif self.config.provider == ModelProvider.OPENAI:
+                # Use official OpenAI API (no custom base URL)
+                base_url = None
+            else:
+                # Default URLs for each local provider
+                default_urls = {
+                    ModelProvider.LMSTUDIO: "http://localhost:1234/v1",
+                    ModelProvider.LOCALAI: "http://localhost:8080/v1",
+                    ModelProvider.OLLAMA: "http://localhost:11434/v1",
+                    ModelProvider.TEXTGEN_WEBUI: "http://localhost:5000/v1",
+                    ModelProvider.CUSTOM: None
+                }
+                base_url = default_urls.get(self.config.provider)
+            
+            if base_url:
+                self.openai_client = AsyncOpenAI(
+                    api_key=api_key,
+                    base_url=base_url
+                )
+            else:
+                self.openai_client = AsyncOpenAI(api_key=api_key)
     
     async def initialize_mcp(self):
         """Initialize MCP servers if configured"""
@@ -97,7 +123,9 @@ class LLMAgentExecutor(AgentExecutor):
             # Generate response using LLM
             if self.config.provider == ModelProvider.GOOGLE:
                 response_text = await self._generate_google(text_content, request_context)
-            elif self.config.provider == ModelProvider.OPENAI:
+            elif self.config.provider in [ModelProvider.OPENAI, ModelProvider.LMSTUDIO, 
+                                          ModelProvider.LOCALAI, ModelProvider.OLLAMA, 
+                                          ModelProvider.TEXTGEN_WEBUI, ModelProvider.CUSTOM]:
                 response_text = await self._generate_openai(text_content, request_context)
             else:
                 raise ValueError(f"Unsupported provider: {self.config.provider}")
@@ -235,9 +263,22 @@ class LLMAgentExecutor(AgentExecutor):
             kwargs["max_tokens"] = self.config.max_tokens
         
         # Generate response
-        response = await self.openai_client.chat.completions.create(**kwargs)
-        
-        return response.choices[0].message.content
+        try:
+            logger.debug(f"Sending request to {self.config.provider.value} with model {self.config.model}")
+            response = await self.openai_client.chat.completions.create(**kwargs)
+            
+            if not response.choices:
+                raise RuntimeError("No response choices returned from API")
+            
+            if not response.choices[0].message.content:
+                raise RuntimeError("Empty content in response")
+            
+            result = response.choices[0].message.content
+            logger.debug(f"Received response: {result[:100]}...")
+            return result
+        except Exception as e:
+            logger.error(f"Failed to generate response: {str(e)}", exc_info=True)
+            raise
     
     async def cleanup(self):
         """Cleanup resources"""

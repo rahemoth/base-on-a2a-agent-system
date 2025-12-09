@@ -4,6 +4,7 @@ A2A Agent implementation using Google's Agent-to-Agent protocol
 import asyncio
 import json
 import uuid
+import logging
 from typing import Optional, Dict, Any, List, AsyncGenerator
 from datetime import datetime
 from google import genai
@@ -12,6 +13,9 @@ from openai import AsyncOpenAI
 
 from backend.models import AgentConfig, AgentStatus, Message, MessageRole, ModelProvider
 from backend.mcp import mcp_manager
+
+# Configure logger
+logger = logging.getLogger(__name__)
 
 
 # Role mapping for OpenAI API
@@ -49,8 +53,10 @@ class A2AAgent:
                 base_url_to_use = self.config.openai_base_url or openai_base_url
                 if base_url_to_use:
                     self.openai_client = AsyncOpenAI(api_key=openai_api_key, base_url=base_url_to_use)
+                    self._logged_base_url = base_url_to_use
                 else:
                     self.openai_client = AsyncOpenAI(api_key=openai_api_key)
+                    self._logged_base_url = "https://api.openai.com/v1"
             elif self.config.provider in [ModelProvider.LMSTUDIO, ModelProvider.LOCALAI, 
                                           ModelProvider.OLLAMA, ModelProvider.TEXTGEN_WEBUI, 
                                           ModelProvider.CUSTOM]:
@@ -79,6 +85,7 @@ class A2AAgent:
                         raise ValueError(f"Base URL required for {self.config.provider}")
                 
                 self.openai_client = AsyncOpenAI(api_key=api_key, base_url=base_url)
+                self._logged_base_url = base_url
             else:
                 raise ValueError(f"Unsupported provider: {self.config.provider}")
             
@@ -97,7 +104,7 @@ class A2AAgent:
             return True
         except Exception as e:
             self.status = AgentStatus.ERROR
-            print(f"Error initializing agent {self.id}: {e}")
+            logger.error(f"Error initializing agent {self.id}: {e}", exc_info=True)
             return False
     
     async def get_tools(self) -> List[Tool]:
@@ -325,67 +332,99 @@ class A2AAgent:
             
             return stream_response()
         else:
-            response = await self.openai_client.chat.completions.create(**kwargs)
-            
-            # Handle tool calls if present
-            message_obj = response.choices[0].message
-            if message_obj.tool_calls:
-                # Execute tools and get responses
-                tool_messages = []
-                for tool_call in message_obj.tool_calls:
-                    tool_result = await self._execute_tool_openai(tool_call)
-                    tool_messages.append({
-                        "role": "tool",
-                        "tool_call_id": tool_call.id,
-                        "content": str(tool_result)
-                    })
+            try:
+                logger.debug(f"Sending request to {self.config.provider.value} with model {self.config.model}")
+                # Log base URL if available (store during init for reliable access)
+                if hasattr(self, '_logged_base_url'):
+                    logger.debug(f"API base URL: {self._logged_base_url}")
                 
-                # Add assistant message with tool calls
-                messages.append({
-                    "role": "assistant",
-                    "content": message_obj.content,
-                    "tool_calls": [
-                        {
-                            "id": tc.id,
-                            "type": tc.type,
-                            "function": {
-                                "name": tc.function.name,
-                                "arguments": tc.function.arguments
+                response = await self.openai_client.chat.completions.create(**kwargs)
+                
+                # Validate response structure
+                if not response.choices or len(response.choices) == 0:
+                    raise RuntimeError(f"No response choices returned from {self.config.provider.value} (model: {self.config.model})")
+                
+                if not response.choices[0].message:
+                    raise RuntimeError(f"No message in response from {self.config.provider.value} (model: {self.config.model})")
+                
+                # Handle tool calls if present
+                message_obj = response.choices[0].message
+                
+                # Check for empty content only if there are no tool calls
+                if not message_obj.content and not message_obj.tool_calls:
+                    error_msg = f"Empty content and no tool calls in response from {self.config.provider.value} (model: {self.config.model})"
+                    logger.warning(error_msg)
+                    raise RuntimeError(error_msg)
+                
+                if message_obj.content:
+                    logger.debug(f"Received response: {message_obj.content[:100]}...")
+                
+                if message_obj.tool_calls:
+                    # Execute tools and get responses
+                    tool_messages = []
+                    for tool_call in message_obj.tool_calls:
+                        tool_result = await self._execute_tool_openai(tool_call)
+                        tool_messages.append({
+                            "role": "tool",
+                            "tool_call_id": tool_call.id,
+                            "content": str(tool_result)
+                        })
+                    
+                    # Add assistant message with tool calls
+                    messages.append({
+                        "role": "assistant",
+                        "content": message_obj.content,
+                        "tool_calls": [
+                            {
+                                "id": tc.id,
+                                "type": tc.type,
+                                "function": {
+                                    "name": tc.function.name,
+                                    "arguments": tc.function.arguments
+                                }
                             }
-                        }
-                        for tc in message_obj.tool_calls
-                    ]
-                })
+                            for tc in message_obj.tool_calls
+                        ]
+                    })
+                    
+                    # Add tool results
+                    messages.extend(tool_messages)
+                    
+                    # Get final response (reuse config from kwargs)
+                    final_kwargs = {
+                        "model": self.config.model,
+                        "messages": messages,
+                        "temperature": self.config.temperature,
+                    }
+                    if self.config.max_tokens:
+                        final_kwargs["max_tokens"] = self.config.max_tokens
+                    
+                    response = await self.openai_client.chat.completions.create(**final_kwargs)
+                    message_obj = response.choices[0].message
                 
-                # Add tool results
-                messages.extend(tool_messages)
+                # Get result content
+                # Use empty string if None to handle:
+                # 1. Tool-only responses that may have null content after tool execution
+                # 2. Some models that return null content with tool calls
+                # Empty string is safe for storage in conversation history
+                result = message_obj.content if message_obj.content is not None else ""
                 
-                # Get final response (reuse config from kwargs)
-                final_kwargs = {
-                    "model": self.config.model,
-                    "messages": messages,
-                    "temperature": self.config.temperature,
-                }
-                if self.config.max_tokens:
-                    final_kwargs["max_tokens"] = self.config.max_tokens
+                # Store in conversation history
+                self.conversation_history.append(Message(
+                    role=MessageRole.USER,
+                    content=message,
+                    timestamp=datetime.utcnow()
+                ))
+                self.conversation_history.append(Message(
+                    role=MessageRole.AGENT,
+                    content=result,
+                    timestamp=datetime.utcnow()
+                ))
                 
-                response = await self.openai_client.chat.completions.create(**final_kwargs)
-            
-            result = response.choices[0].message.content
-            
-            # Store in conversation history
-            self.conversation_history.append(Message(
-                role=MessageRole.USER,
-                content=message,
-                timestamp=datetime.utcnow()
-            ))
-            self.conversation_history.append(Message(
-                role=MessageRole.AGENT,
-                content=result,
-                timestamp=datetime.utcnow()
-            ))
-            
-            return result
+                return result
+            except Exception as e:
+                logger.error(f"Failed to generate response from {self.config.provider.value}: {str(e)}", exc_info=True)
+                raise
     
     async def _execute_tool(self, tool_call: Any) -> Dict[str, Any]:
         """Execute a tool call via MCP (Google format)"""

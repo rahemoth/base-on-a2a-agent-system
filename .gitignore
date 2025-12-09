@@ -59,6 +59,11 @@ dist/
 out/
 build/
 
+# Backup files
+*.backup
+*_old.*
+*_new.*
+
 # Testing
 .pytest_cache/
 .coverage

@@ -27,11 +27,11 @@ const CollaborationModal = ({ agents, onClose, onStartCollaboration }) => {
     
     // Validation
     if (selectedAgents.length < 2) {
-      setError('Please select at least 2 agents for collaboration');
+      setError('请至少选择 2 个 Agent 进行协作');
       return;
     }
     if (!task.trim()) {
-      setError('Please enter a task description');
+      setError('请输入任务描述');
       return;
     }
 
@@ -47,7 +47,7 @@ const CollaborationModal = ({ agents, onClose, onStartCollaboration }) => {
       });
       setCollaborationResult(result);
     } catch (error) {
-      setError('Failed to start collaboration: ' + error.message);
+      setError('启动协作失败: ' + error.message);
     } finally {
       setIsRunning(false);
     }
@@ -64,7 +64,7 @@ const CollaborationModal = ({ agents, onClose, onStartCollaboration }) => {
         <div className="modal-header">
           <div className="header-title">
             <Users size={24} />
-            <h2>Multi-Agent Collaboration</h2>
+            <h2>多 Agent 协作</h2>
           </div>
           <button className="btn-close" onClick={onClose}>
             <X size={20} />
@@ -81,10 +81,9 @@ const CollaborationModal = ({ agents, onClose, onStartCollaboration }) => {
           {!collaborationResult ? (
             <>
               <div className="form-section">
-                <h3>Select Agents</h3>
+                <h3>选择 Agents</h3>
                 <p className="section-description">
-                  Choose multiple agents to collaborate on a task. They will work together 
-                  following the A2A protocol to achieve the goal.
+                  选择多个 Agent 来协作完成任务。它们将遵循 A2A 协议共同工作以实现目标。
                 </p>
                 <div className="agents-selection">
                   {agents.map(agent => (
@@ -109,36 +108,36 @@ const CollaborationModal = ({ agents, onClose, onStartCollaboration }) => {
                 </div>
                 {selectedAgents.length > 0 && (
                   <div className="selected-count">
-                    {selectedAgents.length} agent{selectedAgents.length !== 1 ? 's' : ''} selected
+                    已选择 {selectedAgents.length} 个 Agent
                   </div>
                 )}
               </div>
 
               <div className="form-section">
-                <h3>Task Configuration</h3>
+                <h3>任务配置</h3>
                 <div className="form-group">
-                  <label>Task Description *</label>
+                  <label>任务描述 *</label>
                   <textarea
                     value={task}
                     onChange={(e) => setTask(e.target.value)}
-                    placeholder="Describe the task you want the agents to collaborate on..."
+                    placeholder="描述您希望 Agents 协作完成的任务..."
                     rows={4}
                     disabled={isRunning}
                   />
                   <small className="form-hint">
-                    Be specific about what you want the agents to accomplish together
+                    请具体说明您希望 Agents 共同完成什么
                   </small>
                 </div>
 
                 <div className="form-row">
                   <div className="form-group">
-                    <label>Coordinator Agent (Optional)</label>
+                    <label>协调员 Agent (可选)</label>
                     <select
                       value={coordinatorAgent}
                       onChange={(e) => setCoordinatorAgent(e.target.value)}
                       disabled={isRunning}
                     >
-                      <option value="">Auto (first selected agent)</option>
+                      <option value="">自动 (第一个选中的 Agent)</option>
                       {selectedAgents.map(agentId => (
                         <option key={agentId} value={agentId}>
                           {getAgentName(agentId)}
@@ -146,12 +145,12 @@ const CollaborationModal = ({ agents, onClose, onStartCollaboration }) => {
                       ))}
                     </select>
                     <small className="form-hint">
-                      The coordinator leads the collaboration
+                      协调员负责引导协作过程
                     </small>
                   </div>
 
                   <div className="form-group">
-                    <label>Max Rounds</label>
+                    <label>最大轮数</label>
                     <input
                       type="number"
                       value={maxRounds}
@@ -161,7 +160,7 @@ const CollaborationModal = ({ agents, onClose, onStartCollaboration }) => {
                       disabled={isRunning}
                     />
                     <small className="form-hint">
-                      Number of collaboration rounds
+                      协作的轮数
                     </small>
                   </div>
                 </div>
@@ -170,12 +169,12 @@ const CollaborationModal = ({ agents, onClose, onStartCollaboration }) => {
           ) : (
             <div className="collaboration-results">
               <div className="results-header">
-                <h3>Collaboration Results</h3>
+                <h3>协作结果</h3>
                 <button
                   className="btn btn-secondary"
                   onClick={() => setCollaborationResult(null)}
                 >
-                  Start New Collaboration
+                  开始新协作
                 </button>
               </div>
               
@@ -186,7 +185,7 @@ const CollaborationModal = ({ agents, onClose, onStartCollaboration }) => {
                     className={`message ${msg.role.toLowerCase()}`}
                   >
                     <div className="message-meta">
-                      <span className="message-role">{msg.role}</span>
+                      <span className="message-role">{msg.role === 'system' ? '系统' : 'Agent'}</span>
                       {msg.metadata?.agent_name && (
                         <span className="message-agent">{msg.metadata.agent_name}</span>
                       )}
@@ -205,7 +204,7 @@ const CollaborationModal = ({ agents, onClose, onStartCollaboration }) => {
         {!collaborationResult && (
           <div className="modal-footer">
             <button className="btn btn-secondary" onClick={onClose} disabled={isRunning}>
-              Cancel
+              取消
             </button>
             <button
               className="btn btn-primary"
@@ -215,12 +214,12 @@ const CollaborationModal = ({ agents, onClose, onStartCollaboration }) => {
               {isRunning ? (
                 <>
                   <div className="spinner-small"></div>
-                  Running...
+                  运行中...
                 </>
               ) : (
                 <>
                   <Play size={18} />
-                  Start Collaboration
+                  开始协作
                 </>
               )}
             </button>
