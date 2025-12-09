@@ -53,8 +53,10 @@ class A2AAgent:
                 base_url_to_use = self.config.openai_base_url or openai_base_url
                 if base_url_to_use:
                     self.openai_client = AsyncOpenAI(api_key=openai_api_key, base_url=base_url_to_use)
+                    self._logged_base_url = base_url_to_use
                 else:
                     self.openai_client = AsyncOpenAI(api_key=openai_api_key)
+                    self._logged_base_url = "https://api.openai.com/v1"
             elif self.config.provider in [ModelProvider.LMSTUDIO, ModelProvider.LOCALAI, 
                                           ModelProvider.OLLAMA, ModelProvider.TEXTGEN_WEBUI, 
                                           ModelProvider.CUSTOM]:
@@ -83,6 +85,7 @@ class A2AAgent:
                         raise ValueError(f"Base URL required for {self.config.provider}")
                 
                 self.openai_client = AsyncOpenAI(api_key=api_key, base_url=base_url)
+                self._logged_base_url = base_url
             else:
                 raise ValueError(f"Unsupported provider: {self.config.provider}")
             
@@ -331,14 +334,14 @@ class A2AAgent:
         else:
             try:
                 logger.debug(f"Sending request to {self.config.provider.value} with model {self.config.model}")
-                # Get base URL for logging
-                base_url = getattr(self.openai_client, 'base_url', None)
-                if base_url:
-                    logger.debug(f"API base URL: {base_url}")
+                # Log base URL if available (store during init for reliable access)
+                if hasattr(self, '_logged_base_url'):
+                    logger.debug(f"API base URL: {self._logged_base_url}")
                 
                 response = await self.openai_client.chat.completions.create(**kwargs)
                 
-                if not response.choices:
+                # Validate response structure
+                if not response.choices or len(response.choices) == 0:
                     raise RuntimeError(f"No response choices returned from {self.config.provider.value} (model: {self.config.model})")
                 
                 if not response.choices[0].message:
