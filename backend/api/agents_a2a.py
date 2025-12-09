@@ -16,6 +16,7 @@ from backend.models import (
     AgentCollaboration,
 )
 from backend.agents.a2a_manager import a2a_agent_manager
+from backend.utils.a2a_utils import extract_text_from_parts
 
 # Initialize logger at module level
 logger = logging.getLogger(__name__)
@@ -104,14 +105,8 @@ async def send_message(agent_message: AgentMessage):
             agent_message.message,
         )
         
-        # Extract text from response
-        # Note: response.parts contains Part objects which are RootModel wrappers
-        # We need to access part.root to get the actual TextPart/FilePart/DataPart
-        text_response = ""
-        for part in response.parts:
-            actual_part = part.root if hasattr(part, 'root') else part
-            if isinstance(actual_part, types.TextPart):
-                text_response += actual_part.text
+        # Extract text from response using centralized utility
+        text_response = extract_text_from_parts(response.parts)
         
         logger.debug(f"Returning response to client")
         

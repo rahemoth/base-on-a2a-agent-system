@@ -15,6 +15,7 @@ from openai import AsyncOpenAI
 
 from backend.models import AgentConfig, ModelProvider
 from backend.mcp import mcp_manager
+from backend.utils.a2a_utils import extract_text_from_parts
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -175,22 +176,10 @@ class LLMAgentExecutor(AgentExecutor):
     def _extract_text_from_message(self, message: types.Message) -> str:
         """Extract text content from message parts
         
-        The A2A SDK uses Pydantic RootModel for discriminated unions, where Part
-        is a wrapper around TextPart | FilePart | DataPart. We access part.root
-        to get the actual typed part before checking instance type.
+        Uses centralized utility function to ensure consistent behavior
+        across the application when extracting text from A2A messages.
         """
-        text_parts = []
-        
-        for part in message.parts:
-            # In A2A SDK, Part is a RootModel wrapper around the actual part type
-            # We need to access part.root to get the actual TextPart/FilePart/DataPart
-            actual_part = part.root if hasattr(part, 'root') else part
-            
-            # Only extract from TextPart - other part types (FilePart, DataPart) don't have text
-            if isinstance(actual_part, types.TextPart):
-                text_parts.append(actual_part.text)
-        
-        return " ".join(text_parts)
+        return extract_text_from_parts(message.parts)
     
     def _create_message(
         self,

@@ -15,6 +15,7 @@ from a2a.server.events import InMemoryQueueManager
 from backend.agents.a2a_executor import LLMAgentExecutor
 from backend.models import AgentConfig, AgentStatus, AgentResponse
 from backend.config import settings
+from backend.utils.a2a_utils import extract_text_from_parts
 
 # Initialize logger at module level
 logger = logging.getLogger(__name__)
@@ -320,13 +321,8 @@ class A2AAgentManager:
                 try:
                     response = await self.send_message(agent_id, message_to_send)
                     
-                    # Extract text from response
-                    # Note: response.parts contains Part objects which are RootModel wrappers
-                    text_response = ""
-                    for part in response.parts:
-                        actual_part = part.root if hasattr(part, 'root') else part
-                        if isinstance(actual_part, types.TextPart):
-                            text_response += actual_part.text
+                    # Extract text from response using centralized utility
+                    text_response = extract_text_from_parts(response.parts)
                     
                     collaboration_history.append({
                         "role": "agent",
