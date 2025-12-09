@@ -3,7 +3,7 @@ A2A-compliant Agent Manager using the official a2a-sdk
 """
 import uuid
 from typing import Dict, Optional, List
-from datetime import datetime
+from datetime import datetime, timezone
 
 from a2a import types
 from a2a.server.request_handlers import DefaultRequestHandler
@@ -93,16 +93,16 @@ class A2AAgentManager:
         self.task_stores[agent_id] = task_store
         self.agent_metadata[agent_id] = {
             "config": config,
-            "created_at": datetime.utcnow(),
-            "updated_at": datetime.utcnow(),
+            "created_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(timezone.utc),
         }
         
         return AgentResponse(
             id=agent_id,
             config=config,
             status=AgentStatus.IDLE,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc)
         )
     
     async def get_agent(self, agent_id: str) -> Optional[LLMAgentExecutor]:
@@ -166,8 +166,8 @@ class A2AAgentManager:
         self.task_stores[agent_id] = task_store
         self.agent_metadata[agent_id] = {
             "config": config,
-            "created_at": self.agent_metadata.get(agent_id, {}).get("created_at", datetime.utcnow()),
-            "updated_at": datetime.utcnow(),
+            "created_at": self.agent_metadata.get(agent_id, {}).get("created_at", datetime.now(timezone.utc)),
+            "updated_at": datetime.now(timezone.utc),
         }
         
         return AgentResponse(
@@ -175,7 +175,7 @@ class A2AAgentManager:
             config=config,
             status=AgentStatus.IDLE,
             created_at=self.agent_metadata[agent_id]["created_at"],
-            updated_at=datetime.utcnow()
+            updated_at=datetime.now(timezone.utc)
         )
     
     async def delete_agent(self, agent_id: str) -> bool:
@@ -274,7 +274,7 @@ class A2AAgentManager:
             "role": "system",
             "content": f"Starting collaboration on task: {task}",
             "metadata": {},
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         })
         
         # Initial message to coordinator
@@ -291,12 +291,13 @@ class A2AAgentManager:
                 if idx == 0 and round_num == 0:
                     message_to_send = current_message
                 else:
-                    # Build context from previous responses
-                    previous_responses = "\n\n".join([
+                    # Build context from previous responses (last 3 for context)
+                    relevant_messages = [
                         f"{msg['metadata'].get('agent_name', 'Unknown')}: {msg['content']}"
                         for msg in collaboration_history
                         if msg['role'] == 'agent' and msg.get('metadata', {}).get('agent_id') != agent_id
-                    ][-3:])  # Last 3 responses for context
+                    ]
+                    previous_responses = "\n\n".join(relevant_messages[-3:])
                     
                     if previous_responses:
                         message_to_send = f"Previous contributions:\n{previous_responses}\n\nBased on the discussion so far, what is your contribution to the task?"
@@ -317,14 +318,14 @@ class A2AAgentManager:
                         "role": "agent",
                         "content": f"[{agent_name}]: {text_response}",
                         "metadata": {"agent_id": agent_id, "agent_name": agent_name},
-                        "timestamp": datetime.utcnow().isoformat()
+                        "timestamp": datetime.now(timezone.utc).isoformat()
                     })
                 except Exception as e:
                     collaboration_history.append({
                         "role": "agent",
                         "content": f"[{agent_name}]: Error - {str(e)}",
                         "metadata": {"agent_id": agent_id, "agent_name": agent_name, "error": True},
-                        "timestamp": datetime.utcnow().isoformat()
+                        "timestamp": datetime.now(timezone.utc).isoformat()
                     })
         
         return collaboration_history
