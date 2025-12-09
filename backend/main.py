@@ -37,7 +37,10 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
+<<<<<<< Updated upstream
     # allow_origins=settings.allowed_origins.split("*"),
+=======
+>>>>>>> Stashed changes
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
