@@ -96,11 +96,13 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
   });
 
   // State for custom model name input
-  const [customModel, setCustomModel] = useState(
-    agent?.config?.model && !PROVIDERS[agent?.config?.provider]?.models.find(m => m.value === agent?.config?.model)
-      ? agent?.config?.model 
-      : ''
-  );
+  const [customModel, setCustomModel] = useState(() => {
+    if (!agent?.config?.model || !agent?.config?.provider) return '';
+    const provider = PROVIDERS[agent.config.provider];
+    if (!provider) return '';
+    const modelExists = provider.models.find(m => m.value === agent.config.model);
+    return modelExists ? '' : agent.config.model;
+  });
 
   const [newMcpServer, setNewMcpServer] = useState({
     name: '',
@@ -166,10 +168,15 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
     setConfig({ ...config, model: value || 'custom-model' });
   };
 
-  const currentProvider = PROVIDERS[config.provider] || PROVIDERS.google;
+  const currentProvider = PROVIDERS[config.provider];
+  if (!currentProvider) {
+    console.error(`Invalid provider: ${config.provider}`);
+    // Fallback to google but log the error
+  }
+  const providerInfo = currentProvider || PROVIDERS.google;
   const showCustomModelInput = config.model === 'custom' || 
-    (currentProvider.models[0]?.value === 'custom');
-  const isLocalProvider = !currentProvider.requiresApiKey;
+    (providerInfo.models[0]?.value === 'custom');
+  const isLocalProvider = !providerInfo.requiresApiKey;
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -221,10 +228,10 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
             <div className="form-group">
               <label>Model *</label>
               <select
-                value={showCustomModelInput ? 'custom' : config.model}
+                value={providerInfo.models[0]?.value === 'custom' ? 'custom' : config.model}
                 onChange={(e) => handleModelChange(e.target.value)}
               >
-                {currentProvider.models.map(model => (
+                {providerInfo.models.map(model => (
                   <option key={model.value} value={model.value}>{model.label}</option>
                 ))}
               </select>
@@ -278,17 +285,17 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
 
             {isLocalProvider && (
               <div className="form-group">
-                <label>API Base URL {currentProvider.requiresBaseUrl ? '*' : ''}</label>
+                <label>API Base URL {providerInfo.requiresBaseUrl ? '*' : ''}</label>
                 <input
                   type="text"
                   value={config.api_base_url || ''}
                   onChange={(e) => setConfig({ ...config, api_base_url: e.target.value || null })}
-                  placeholder={currentProvider.defaultBaseUrl || 'http://localhost:8080/v1'}
-                  required={currentProvider.requiresBaseUrl}
+                  placeholder={providerInfo.defaultBaseUrl || 'http://localhost:8080/v1'}
+                  required={providerInfo.requiresBaseUrl}
                 />
                 <small className="form-hint">
-                  {currentProvider.defaultBaseUrl 
-                    ? `Default: ${currentProvider.defaultBaseUrl}` 
+                  {providerInfo.defaultBaseUrl 
+                    ? `Default: ${providerInfo.defaultBaseUrl}` 
                     : 'Enter the base URL for your OpenAI-compatible API endpoint'}
                 </small>
               </div>

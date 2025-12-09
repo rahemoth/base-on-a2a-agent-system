@@ -56,7 +56,8 @@ class A2AAgent:
                                           ModelProvider.CUSTOM]:
                 # Local/custom providers use OpenAI-compatible API
                 # API key can be any string for local models (some require it but don't validate)
-                api_key = openai_api_key or "dummy-key"
+                # Using a descriptive placeholder to make it clear this is for local use only
+                api_key = openai_api_key or "local-llm-key-not-required"
                 
                 # Determine base URL based on provider
                 if self.config.api_base_url:
