@@ -3,7 +3,7 @@ A2A-compliant Agent Manager using the official a2a-sdk
 """
 import uuid
 from typing import Dict, Optional, List
-from datetime import datetime
+from datetime import datetime, timezone
 
 from a2a import types
 from a2a.server.request_handlers import DefaultRequestHandler
@@ -93,16 +93,16 @@ class A2AAgentManager:
         self.task_stores[agent_id] = task_store
         self.agent_metadata[agent_id] = {
             "config": config,
-            "created_at": datetime.utcnow(),
-            "updated_at": datetime.utcnow(),
+            "created_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(timezone.utc),
         }
         
         return AgentResponse(
             id=agent_id,
             config=config,
             status=AgentStatus.IDLE,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc)
         )
     
     async def get_agent(self, agent_id: str) -> Optional[LLMAgentExecutor]:
@@ -166,8 +166,8 @@ class A2AAgentManager:
         self.task_stores[agent_id] = task_store
         self.agent_metadata[agent_id] = {
             "config": config,
-            "created_at": self.agent_metadata.get(agent_id, {}).get("created_at", datetime.utcnow()),
-            "updated_at": datetime.utcnow(),
+            "created_at": self.agent_metadata.get(agent_id, {}).get("created_at", datetime.now(timezone.utc)),
+            "updated_at": datetime.now(timezone.utc),
         }
         
         return AgentResponse(
@@ -175,7 +175,7 @@ class A2AAgentManager:
             config=config,
             status=AgentStatus.IDLE,
             created_at=self.agent_metadata[agent_id]["created_at"],
-            updated_at=datetime.utcnow()
+            updated_at=datetime.now(timezone.utc)
         )
     
     async def delete_agent(self, agent_id: str) -> bool:
@@ -211,7 +211,7 @@ class A2AAgentManager:
         message = types.Message(
             kind="message",
             message_id=str(uuid.uuid4()),
-            role=types.Role.USER,
+            role=types.Role.user,
             parts=[types.TextPart(kind="text", text=message_text)],
             context_id=context_id,
             task_id=task_id,
@@ -219,19 +219,119 @@ class A2AAgentManager:
         
         # Send message through handler
         params = types.MessageSendParams(message=message)
-        request = types.SendMessageRequest(
-            jsonrpc="2.0",
-            id=str(uuid.uuid4()),
-            method="sendMessage",
-            params=params
-        )
         
-        response = await handler.send_message(request)
+        # Call the handler's on_message_send method directly
+        response = await handler.on_message_send(params)
         
-        if isinstance(response, types.SendMessageSuccessResponse):
-            return response.result
+        return response
+    
+    async def collaborate_agents(
+        self,
+        agent_ids: List[str],
+        task: str,
+        coordinator_id: Optional[str] = None,
+        max_rounds: int = 5
+    ) -> List[Dict]:
+        """
+        Facilitate collaboration between agents using A2A protocol
+        
+        Args:
+            agent_ids: List of agent IDs to collaborate. Must contain at least one agent.
+            task: The task description for agents to collaborate on.
+            coordinator_id: Optional ID of the agent to coordinate. If not specified, 
+                          the first agent in agent_ids will be used as coordinator.
+            max_rounds: Maximum number of collaboration rounds. Default is 5.
+        
+        Returns:
+            List[Dict]: Collaboration history with the following structure for each entry:
+                - role: "system" or "agent"
+                - content: The message content
+                - metadata: Dict containing agent_id, agent_name, and optionally "error": True
+                - timestamp: ISO format timestamp string
+        
+        Raises:
+            ValueError: If no agents are specified or if any agent ID is not found.
+        """
+        if not agent_ids:
+            raise ValueError("No agents specified for collaboration")
+        
+        # Validate all agents exist
+        for agent_id in agent_ids:
+            if agent_id not in self.agents:
+                raise ValueError(f"Agent {agent_id} not found")
+        
+        # Use first agent as coordinator if not specified
+        if coordinator_id:
+            if coordinator_id not in self.agents:
+                raise ValueError(f"Coordinator agent {coordinator_id} not found")
         else:
-            raise ValueError(f"Error sending message: {response.error}")
+            coordinator_id = agent_ids[0]
+        
+        collaboration_history = []
+        
+        # Initialize collaboration task
+        collaboration_history.append({
+            "role": "system",
+            "content": f"Starting collaboration on task: {task}",
+            "metadata": {},
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        })
+        
+        # Initial message to coordinator
+        current_message = f"Task: {task}\n\nYou are coordinating a collaboration with {len(agent_ids) - 1} other agents. Please provide your initial thoughts and approach."
+        
+        # Collaboration rounds
+        for round_num in range(max_rounds):
+            # Get responses from all agents
+            for idx, agent_id in enumerate(agent_ids):
+                agent_metadata = self.agent_metadata.get(agent_id)
+                if agent_metadata and "config" in agent_metadata:
+                    agent_name = agent_metadata["config"].name
+                else:
+                    agent_name = agent_id
+                
+                # Customize message for each agent
+                if idx == 0 and round_num == 0:
+                    message_to_send = current_message
+                else:
+                    # Build context from previous responses (last 3 for context)
+                    relevant_messages = [
+                        f"{msg['metadata'].get('agent_name', 'Unknown')}: {msg['content']}"
+                        for msg in collaboration_history
+                        if msg['role'] == 'agent' and msg.get('metadata', {}).get('agent_id') != agent_id
+                    ]
+                    previous_responses = "\n\n".join(relevant_messages[-3:])
+                    
+                    if previous_responses:
+                        message_to_send = f"Previous contributions:\n{previous_responses}\n\nBased on the discussion so far, what is your contribution to the task?"
+                    else:
+                        message_to_send = f"Task: {task}\n\nPlease provide your thoughts and contribution."
+                
+                # Send message to agent
+                try:
+                    response = await self.send_message(agent_id, message_to_send)
+                    
+                    # Extract text from response
+                    text_response = ""
+                    for part in response.parts:
+                        if isinstance(part, types.TextPart):
+                            text_response += part.text
+                    
+                    collaboration_history.append({
+                        "role": "agent",
+                        "content": f"[{agent_name}]: {text_response}",
+                        "metadata": {"agent_id": agent_id, "agent_name": agent_name},
+                        "timestamp": datetime.now(timezone.utc).isoformat()
+                    })
+                except Exception as e:
+                    collaboration_history.append({
+                        "role": "agent",
+                        "content": f"[{agent_name}]: Error - {str(e)}",
+                        "metadata": {"agent_id": agent_id, "agent_name": agent_name, "error": True},
+                        "timestamp": datetime.now(timezone.utc).isoformat()
+                    })
+        
+        return collaboration_history
     
     async def cleanup_all(self):
         """Cleanup all agents"""

@@ -91,8 +91,7 @@ class LLMAgentExecutor(AgentExecutor):
                     context_id=message.context_id,
                     task_id=message.task_id
                 )
-                event_queue.publish(error_message)
-                event_queue.finished()
+                await event_queue.enqueue_event(error_message)
                 return
             
             # Generate response using LLM
@@ -110,8 +109,7 @@ class LLMAgentExecutor(AgentExecutor):
                 task_id=message.task_id
             )
             
-            event_queue.publish(response_message)
-            event_queue.finished()
+            await event_queue.enqueue_event(response_message)
             
         except Exception as e:
             # Handle errors
@@ -120,8 +118,7 @@ class LLMAgentExecutor(AgentExecutor):
                 context_id=request_context.message.context_id,
                 task_id=request_context.message.task_id
             )
-            event_queue.publish(error_message)
-            event_queue.finished()
+            await event_queue.enqueue_event(error_message)
     
     async def cancel(self, task_id: str, reason: Optional[str] = None) -> None:
         """Cancel a running task (required by AgentExecutor interface)"""
@@ -146,7 +143,7 @@ class LLMAgentExecutor(AgentExecutor):
         return types.Message(
             kind="message",
             message_id=str(uuid.uuid4()),
-            role=types.Role.AGENT,
+            role=types.Role.agent,
             parts=[types.TextPart(kind="text", text=text)],
             context_id=context_id,
             task_id=task_id
@@ -164,7 +161,7 @@ class LLMAgentExecutor(AgentExecutor):
         if hasattr(request_context, 'task') and request_context.task:
             # Get messages from task history
             for msg in request_context.task.messages:
-                role = "user" if msg.role == types.Role.USER else "model"
+                role = "user" if msg.role == types.Role.user else "model"
                 msg_text = self._extract_text_from_message(msg)
                 if msg_text:
                     contents.append(genai.types.Content(
@@ -214,7 +211,7 @@ class LLMAgentExecutor(AgentExecutor):
         # Add context messages if available
         if hasattr(request_context, 'task') and request_context.task:
             for msg in request_context.task.messages:
-                role = "user" if msg.role == types.Role.USER else "assistant"
+                role = "user" if msg.role == types.Role.user else "assistant"
                 msg_text = self._extract_text_from_message(msg)
                 if msg_text:
                     messages.append({
