@@ -29,9 +29,8 @@ class A2AAgentManager:
     def _create_agent_card(self, agent_id: str, config: AgentConfig) -> types.AgentCard:
         """Create an A2A agent card for the agent"""
         # Determine base URL for the agent
-        base_url = f"{settings.host}:{settings.port}"
-        if not base_url.startswith("http"):
-            base_url = f"http://{base_url}"
+        protocol = "https" if settings.host != "localhost" and settings.host != "127.0.0.1" else "http"
+        base_url = f"{protocol}://{settings.host}:{settings.port}"
         
         # Create agent card
         return types.AgentCard(
@@ -39,7 +38,7 @@ class A2AAgentManager:
             description=config.description or f"AI Agent powered by {config.provider.value}",
             protocol_version="0.3.0",
             version="1.0.0",
-            url=f"{base_url}/agents/{agent_id}",
+            url=f"{base_url}/api/agents/{agent_id}",
             skills=[
                 types.AgentSkill(
                     id="chat",

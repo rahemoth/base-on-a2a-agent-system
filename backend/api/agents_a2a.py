@@ -171,12 +171,16 @@ async def a2a_jsonrpc_endpoint(agent_id: str, request: Request):
             return error_response.model_dump(exclude_none=True)
     
     except Exception as e:
-        # Return JSON-RPC error
+        # Log the full error internally
+        import logging
+        logging.error(f"Error handling A2A request for agent {agent_id}: {str(e)}", exc_info=True)
+        
+        # Return generic JSON-RPC error to client
         error_response = types.JSONRPCErrorResponse(
             jsonrpc="2.0",
-            id=body.get("id") if "id" in locals() else None,
+            id=body.get("id") if body else None,
             error=types.InternalError(
-                message=f"Internal error: {str(e)}"
+                message="An internal error occurred while processing the request"
             )
         )
         return error_response.model_dump(exclude_none=True)
