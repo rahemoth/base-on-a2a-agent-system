@@ -60,11 +60,12 @@ class A2AAgentManager:
         agent_id = str(uuid.uuid4())
         
         # Create agent executor
+        # Per-agent API keys take priority over global settings
         executor = LLMAgentExecutor(
             agent_id=agent_id,
             config=config,
-            google_api_key=settings.google_api_key,
-            openai_api_key=settings.openai_api_key,
+            google_api_key=config.google_api_key or settings.google_api_key,
+            openai_api_key=config.openai_api_key or settings.openai_api_key,
             openai_base_url=settings.openai_base_url,
         )
         
@@ -139,11 +140,12 @@ class A2AAgentManager:
         await self.delete_agent(agent_id)
         
         # Create new agent with same ID
+        # Per-agent API keys take priority over global settings
         executor = LLMAgentExecutor(
             agent_id=agent_id,
             config=config,
-            google_api_key=settings.google_api_key,
-            openai_api_key=settings.openai_api_key,
+            google_api_key=config.google_api_key or settings.google_api_key,
+            openai_api_key=config.openai_api_key or settings.openai_api_key,
             openai_base_url=settings.openai_base_url,
         )
         

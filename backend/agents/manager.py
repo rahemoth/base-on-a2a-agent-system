@@ -22,8 +22,9 @@ class AgentManager:
         agent = A2AAgent(agent_id, config)
         
         # Initialize agent with appropriate API key(s)
-        google_api_key = settings.google_api_key
-        openai_api_key = settings.openai_api_key
+        # Per-agent API keys take priority over global settings
+        google_api_key = config.google_api_key or settings.google_api_key
+        openai_api_key = config.openai_api_key or settings.openai_api_key
         openai_base_url = settings.openai_base_url
         
         await agent.initialize(
@@ -67,9 +68,9 @@ class AgentManager:
         # Update configuration
         agent.config = config
         
-        # Reinitialize with both API keys
-        google_api_key = settings.google_api_key
-        openai_api_key = settings.openai_api_key
+        # Reinitialize with API keys (per-agent takes priority over global settings)
+        google_api_key = config.google_api_key or settings.google_api_key
+        openai_api_key = config.openai_api_key or settings.openai_api_key
         openai_base_url = settings.openai_base_url
         await agent.initialize(
             google_api_key=google_api_key,

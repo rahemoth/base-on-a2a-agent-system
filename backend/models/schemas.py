@@ -38,6 +38,8 @@ class AgentConfig(BaseModel):
     system_prompt: Optional[str] = Field(None, description="System prompt for the agent")
     temperature: float = Field(0.7, ge=0.0, le=2.0, description="Temperature for generation")
     max_tokens: Optional[int] = Field(None, description="Maximum tokens to generate")
+    google_api_key: Optional[str] = Field(None, description="Google API key for this agent (overrides global setting)")
+    openai_api_key: Optional[str] = Field(None, description="OpenAI API key for this agent (overrides global setting)")
     openai_base_url: Optional[str] = Field(None, description="Custom OpenAI-compatible API base URL (e.g., http://localhost:1234/v1 for LMStudio)")
     mcp_servers: List[MCPServerConfig] = Field(default_factory=list, description="MCP servers configuration")
     capabilities: List[str] = Field(default_factory=list, description="Agent capabilities")

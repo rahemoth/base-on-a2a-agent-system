@@ -36,6 +36,8 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
     system_prompt: '',
     temperature: 0.7,
     max_tokens: null,
+    google_api_key: null,
+    openai_api_key: null,
     openai_base_url: null,
     mcp_servers: [],
     capabilities: [],
@@ -157,8 +159,36 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
               </select>
             </div>
 
+            {config.provider === 'google' && (
+              <div className="form-group">
+                <label>Google API Key (Optional)</label>
+                <input
+                  type="password"
+                  value={config.google_api_key || ''}
+                  onChange={(e) => setConfig({ ...config, google_api_key: e.target.value || null })}
+                  placeholder="Leave empty to use global API key from .env"
+                />
+                <small className="form-hint">
+                  Per-agent API key overrides the global GOOGLE_API_KEY setting
+                </small>
+              </div>
+            )}
+
             {config.provider === 'openai' && (
               <>
+                <div className="form-group">
+                  <label>OpenAI API Key (Optional)</label>
+                  <input
+                    type="password"
+                    value={config.openai_api_key || ''}
+                    onChange={(e) => setConfig({ ...config, openai_api_key: e.target.value || null })}
+                    placeholder="Leave empty to use global API key from .env"
+                  />
+                  <small className="form-hint">
+                    Per-agent API key overrides the global OPENAI_API_KEY setting
+                  </small>
+                </div>
+
                 <div className="form-group">
                   <label>OpenAI API Base URL</label>
                   <select
