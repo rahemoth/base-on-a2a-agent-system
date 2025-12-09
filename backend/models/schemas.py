@@ -19,6 +19,11 @@ class ModelProvider(str, Enum):
     """Model provider enumeration"""
     GOOGLE = "google"
     OPENAI = "openai"
+    LMSTUDIO = "lmstudio"
+    LOCALAI = "localai"
+    OLLAMA = "ollama"
+    TEXTGEN_WEBUI = "textgen-webui"
+    CUSTOM = "custom"
 
 
 class MCPServerConfig(BaseModel):
@@ -33,7 +38,7 @@ class AgentConfig(BaseModel):
     """Agent configuration model"""
     name: str = Field(..., description="Agent name")
     description: str = Field("", description="Agent description")
-    provider: ModelProvider = Field(ModelProvider.GOOGLE, description="Model provider (google or openai)")
+    provider: ModelProvider = Field(ModelProvider.GOOGLE, description="Model provider")
     model: str = Field("gemini-2.0-flash-exp", description="Model to use")
     system_prompt: Optional[str] = Field(None, description="System prompt for the agent")
     temperature: float = Field(0.7, ge=0.0, le=2.0, description="Temperature for generation")
@@ -41,6 +46,7 @@ class AgentConfig(BaseModel):
     google_api_key: Optional[str] = Field(None, description="Google API key for this agent (overrides global setting)")
     openai_api_key: Optional[str] = Field(None, description="OpenAI API key for this agent (overrides global setting)")
     openai_base_url: Optional[str] = Field(None, description="Custom OpenAI-compatible API base URL (e.g., http://localhost:1234/v1 for LMStudio)")
+    api_base_url: Optional[str] = Field(None, description="API base URL for local/custom providers")
     mcp_servers: List[MCPServerConfig] = Field(default_factory=list, description="MCP servers configuration")
     capabilities: List[str] = Field(default_factory=list, description="Agent capabilities")
     metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")

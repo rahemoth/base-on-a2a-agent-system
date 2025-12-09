@@ -51,6 +51,34 @@ class A2AAgent:
                     self.openai_client = AsyncOpenAI(api_key=openai_api_key, base_url=base_url_to_use)
                 else:
                     self.openai_client = AsyncOpenAI(api_key=openai_api_key)
+            elif self.config.provider in [ModelProvider.LMSTUDIO, ModelProvider.LOCALAI, 
+                                          ModelProvider.OLLAMA, ModelProvider.TEXTGEN_WEBUI, 
+                                          ModelProvider.CUSTOM]:
+                # Local/custom providers use OpenAI-compatible API
+                # API key can be any string for local models (some require it but don't validate)
+                # Using a descriptive placeholder to make it clear this is for local use only
+                api_key = openai_api_key or "local-llm-key-not-required"
+                
+                # Determine base URL based on provider
+                if self.config.api_base_url:
+                    base_url = self.config.api_base_url
+                elif self.config.openai_base_url:
+                    # Backward compatibility
+                    base_url = self.config.openai_base_url
+                else:
+                    # Default URLs for each provider
+                    default_urls = {
+                        ModelProvider.LMSTUDIO: "http://localhost:1234/v1",
+                        ModelProvider.LOCALAI: "http://localhost:8080/v1",
+                        ModelProvider.OLLAMA: "http://localhost:11434/v1",
+                        ModelProvider.TEXTGEN_WEBUI: "http://localhost:5000/v1",
+                        ModelProvider.CUSTOM: None
+                    }
+                    base_url = default_urls.get(self.config.provider)
+                    if not base_url:
+                        raise ValueError(f"Base URL required for {self.config.provider}")
+                
+                self.openai_client = AsyncOpenAI(api_key=api_key, base_url=base_url)
             else:
                 raise ValueError(f"Unsupported provider: {self.config.provider}")
             
@@ -133,7 +161,9 @@ class A2AAgent:
         try:
             if self.config.provider == ModelProvider.GOOGLE:
                 return await self._send_message_google(message, context, stream)
-            elif self.config.provider == ModelProvider.OPENAI:
+            elif self.config.provider in [ModelProvider.OPENAI, ModelProvider.LMSTUDIO, 
+                                          ModelProvider.LOCALAI, ModelProvider.OLLAMA, 
+                                          ModelProvider.TEXTGEN_WEBUI, ModelProvider.CUSTOM]:
                 return await self._send_message_openai(message, context, stream)
             else:
                 raise ValueError(f"Unsupported provider: {self.config.provider}")

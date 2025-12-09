@@ -17,15 +17,65 @@ const OPENAI_MODELS = [
   { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' }
 ];
 
-// Preset base URLs for local LLM servers
-const BASE_URL_PRESETS = [
-  { value: '', label: 'OpenAI Official API' },
-  { value: 'http://localhost:1234/v1', label: 'LM Studio (default)' },
-  { value: 'http://localhost:8080/v1', label: 'LocalAI' },
-  { value: 'http://localhost:11434/v1', label: 'Ollama (OpenAI compatible)' },
-  { value: 'http://localhost:5000/v1', label: 'Text Generation WebUI' },
-  { value: 'custom', label: 'Custom URL...' }
+// Common models for local providers - users can enter any model name
+const LOCAL_MODELS = [
+  { value: 'custom', label: 'Enter custom model name...' }
 ];
+
+// Provider definitions with their characteristics
+const PROVIDERS = {
+  google: {
+    label: 'Google (Gemini)',
+    models: GOOGLE_MODELS,
+    requiresApiKey: true,
+    apiKeyField: 'google_api_key',
+    apiKeyLabel: 'Google API Key',
+    defaultModel: 'gemini-2.0-flash-exp'
+  },
+  openai: {
+    label: 'OpenAI (GPT)',
+    models: OPENAI_MODELS,
+    requiresApiKey: true,
+    apiKeyField: 'openai_api_key',
+    apiKeyLabel: 'OpenAI API Key',
+    defaultModel: 'gpt-4o-mini'
+  },
+  lmstudio: {
+    label: 'LM Studio',
+    models: LOCAL_MODELS,
+    requiresApiKey: false,
+    defaultBaseUrl: 'http://localhost:1234/v1',
+    defaultModel: 'local-model'
+  },
+  localai: {
+    label: 'LocalAI',
+    models: LOCAL_MODELS,
+    requiresApiKey: false,
+    defaultBaseUrl: 'http://localhost:8080/v1',
+    defaultModel: 'local-model'
+  },
+  ollama: {
+    label: 'Ollama',
+    models: LOCAL_MODELS,
+    requiresApiKey: false,
+    defaultBaseUrl: 'http://localhost:11434/v1',
+    defaultModel: 'llama2'
+  },
+  'textgen-webui': {
+    label: 'Text Generation WebUI',
+    models: LOCAL_MODELS,
+    requiresApiKey: false,
+    defaultBaseUrl: 'http://localhost:5000/v1',
+    defaultModel: 'local-model'
+  },
+  custom: {
+    label: 'Custom (OpenAI-compatible)',
+    models: LOCAL_MODELS,
+    requiresApiKey: false,
+    requiresBaseUrl: true,
+    defaultModel: 'custom-model'
+  }
+};
 
 const AgentConfigModal = ({ agent, onClose, onSave }) => {
   const [config, setConfig] = useState(agent?.config || {
@@ -38,29 +88,21 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
     max_tokens: null,
     google_api_key: null,
     openai_api_key: null,
-    openai_base_url: null,
+    api_base_url: null,
+    openai_base_url: null, // Keep for backward compatibility
     mcp_servers: [],
     capabilities: [],
     metadata: {}
   });
 
-  // Initialize base URL preset based on existing config
-  const initializeBaseUrlPreset = () => {
-    const existingUrl = agent?.config?.openai_base_url;
-    if (!existingUrl) return '';
-    
-    // Check if it matches a preset
-    const preset = BASE_URL_PRESETS.find(p => p.value === existingUrl);
-    if (preset) return preset.value;
-    
-    // Otherwise it's a custom URL
-    return 'custom';
-  };
-
-  const [baseUrlPreset, setBaseUrlPreset] = useState(initializeBaseUrlPreset());
-  const [customBaseUrl, setCustomBaseUrl] = useState(
-    baseUrlPreset === 'custom' ? agent?.config?.openai_base_url || '' : ''
-  );
+  // State for custom model name input
+  const [customModel, setCustomModel] = useState(() => {
+    if (!agent?.config?.model || !agent?.config?.provider) return '';
+    const provider = PROVIDERS[agent.config.provider];
+    if (!provider) return '';
+    const modelExists = provider.models.find(m => m.value === agent.config.model);
+    return modelExists ? '' : agent.config.model;
+  });
 
   const [newMcpServer, setNewMcpServer] = useState({
     name: '',
@@ -89,6 +131,52 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
     updated.splice(index, 1);
     setConfig({ ...config, mcp_servers: updated });
   };
+
+  const handleProviderChange = (newProvider) => {
+    const providerInfo = PROVIDERS[newProvider];
+    const newConfig = {
+      ...config,
+      provider: newProvider,
+      model: providerInfo.defaultModel
+    };
+    
+    // Set default base URL for local providers
+    if (providerInfo.defaultBaseUrl) {
+      newConfig.api_base_url = providerInfo.defaultBaseUrl;
+    }
+    
+    setConfig(newConfig);
+    // For local providers, initialize customModel with the default model name
+    if (providerInfo.models[0]?.value === 'custom') {
+      setCustomModel(providerInfo.defaultModel);
+    } else {
+      setCustomModel('');
+    }
+  };
+
+  const handleModelChange = (newModel) => {
+    if (newModel === 'custom') {
+      setConfig({ ...config, model: customModel || 'custom-model' });
+    } else {
+      setConfig({ ...config, model: newModel });
+      setCustomModel('');
+    }
+  };
+
+  const handleCustomModelChange = (value) => {
+    setCustomModel(value);
+    setConfig({ ...config, model: value || 'custom-model' });
+  };
+
+  const currentProvider = PROVIDERS[config.provider];
+  if (!currentProvider) {
+    console.error(`Invalid provider: ${config.provider}`);
+    // Fallback to google but log the error
+  }
+  const providerInfo = currentProvider || PROVIDERS.google;
+  const showCustomModelInput = config.model === 'custom' || 
+    (providerInfo.models[0]?.value === 'custom');
+  const isLocalProvider = !providerInfo.requiresApiKey;
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -129,35 +217,41 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
               <label>Provider *</label>
               <select
                 value={config.provider}
-                onChange={(e) => {
-                  const provider = e.target.value;
-                  const defaultModel = provider === 'openai' 
-                    ? OPENAI_MODELS[0].value 
-                    : GOOGLE_MODELS[0].value;
-                  setConfig({ ...config, provider, model: defaultModel });
-                }}
+                onChange={(e) => handleProviderChange(e.target.value)}
               >
-                <option value="google">Google (Gemini)</option>
-                <option value="openai">OpenAI (GPT)</option>
+                {Object.entries(PROVIDERS).map(([key, provider]) => (
+                  <option key={key} value={key}>{provider.label}</option>
+                ))}
               </select>
             </div>
 
             <div className="form-group">
               <label>Model *</label>
               <select
-                value={config.model}
-                onChange={(e) => setConfig({ ...config, model: e.target.value })}
+                value={providerInfo.models[0]?.value === 'custom' ? 'custom' : config.model}
+                onChange={(e) => handleModelChange(e.target.value)}
               >
-                {config.provider === 'google' 
-                  ? GOOGLE_MODELS.map(model => (
-                      <option key={model.value} value={model.value}>{model.label}</option>
-                    ))
-                  : OPENAI_MODELS.map(model => (
-                      <option key={model.value} value={model.value}>{model.label}</option>
-                    ))
-                }
+                {providerInfo.models.map(model => (
+                  <option key={model.value} value={model.value}>{model.label}</option>
+                ))}
               </select>
             </div>
+
+            {showCustomModelInput && (
+              <div className="form-group">
+                <label>Model Name *</label>
+                <input
+                  type="text"
+                  value={customModel}
+                  onChange={(e) => handleCustomModelChange(e.target.value)}
+                  placeholder="Enter model name (e.g., llama2, mistral, etc.)"
+                  required
+                />
+                <small className="form-hint">
+                  Enter the exact model name as configured in your local LLM server
+                </small>
+              </div>
+            )}
 
             {config.provider === 'google' && (
               <div className="form-group">
@@ -175,61 +269,36 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
             )}
 
             {config.provider === 'openai' && (
-              <>
-                <div className="form-group">
-                  <label>OpenAI API Key (Optional)</label>
-                  <input
-                    type="password"
-                    value={config.openai_api_key || ''}
-                    onChange={(e) => setConfig({ ...config, openai_api_key: e.target.value || null })}
-                    placeholder="Leave empty to use global API key from .env"
-                  />
-                  <small className="form-hint">
-                    Per-agent API key overrides the global OPENAI_API_KEY setting
-                  </small>
-                </div>
+              <div className="form-group">
+                <label>OpenAI API Key (Optional)</label>
+                <input
+                  type="password"
+                  value={config.openai_api_key || ''}
+                  onChange={(e) => setConfig({ ...config, openai_api_key: e.target.value || null })}
+                  placeholder="Leave empty to use global API key from .env"
+                />
+                <small className="form-hint">
+                  Per-agent API key overrides the global OPENAI_API_KEY setting
+                </small>
+              </div>
+            )}
 
-                <div className="form-group">
-                  <label>OpenAI API Base URL</label>
-                  <select
-                    value={baseUrlPreset}
-                    onChange={(e) => {
-                      const preset = e.target.value;
-                      setBaseUrlPreset(preset);
-                      if (preset === 'custom') {
-                        setConfig({ ...config, openai_base_url: customBaseUrl || null });
-                      } else {
-                        setConfig({ ...config, openai_base_url: preset || null });
-                      }
-                    }}
-                  >
-                    {BASE_URL_PRESETS.map(preset => (
-                      <option key={preset.value} value={preset.value}>{preset.label}</option>
-                    ))}
-                  </select>
-                  <small className="form-hint">
-                    Select a local LLM server or use the official OpenAI API
-                  </small>
-                </div>
-
-                {baseUrlPreset === 'custom' && (
-                  <div className="form-group">
-                    <label>Custom Base URL</label>
-                    <input
-                      type="text"
-                      value={customBaseUrl}
-                      onChange={(e) => {
-                        setCustomBaseUrl(e.target.value);
-                        setConfig({ ...config, openai_base_url: e.target.value || null });
-                      }}
-                      placeholder="http://localhost:8080/v1"
-                    />
-                    <small className="form-hint">
-                      Enter the base URL for your OpenAI-compatible API endpoint
-                    </small>
-                  </div>
-                )}
-              </>
+            {isLocalProvider && (
+              <div className="form-group">
+                <label>API Base URL {providerInfo.requiresBaseUrl ? '*' : ''}</label>
+                <input
+                  type="text"
+                  value={config.api_base_url || ''}
+                  onChange={(e) => setConfig({ ...config, api_base_url: e.target.value || null })}
+                  placeholder={providerInfo.defaultBaseUrl || 'http://localhost:8080/v1'}
+                  required={providerInfo.requiresBaseUrl}
+                />
+                <small className="form-hint">
+                  {providerInfo.defaultBaseUrl 
+                    ? `Default: ${providerInfo.defaultBaseUrl}` 
+                    : 'Enter the base URL for your OpenAI-compatible API endpoint'}
+                </small>
+              </div>
             )}
 
             <div className="form-group">
