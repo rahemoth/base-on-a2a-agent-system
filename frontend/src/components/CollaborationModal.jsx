@@ -9,6 +9,7 @@ const CollaborationModal = ({ agents, onClose, onStartCollaboration }) => {
   const [coordinatorAgent, setCoordinatorAgent] = useState('');
   const [collaborationResult, setCollaborationResult] = useState(null);
   const [isRunning, setIsRunning] = useState(false);
+  const [error, setError] = useState(null);
 
   const handleAgentToggle = (agentId) => {
     setSelectedAgents(prev => {
@@ -21,12 +22,16 @@ const CollaborationModal = ({ agents, onClose, onStartCollaboration }) => {
   };
 
   const handleStartCollaboration = async () => {
+    // Clear previous errors
+    setError(null);
+    
+    // Validation
     if (selectedAgents.length < 2) {
-      alert('Please select at least 2 agents for collaboration');
+      setError('Please select at least 2 agents for collaboration');
       return;
     }
     if (!task.trim()) {
-      alert('Please enter a task description');
+      setError('Please enter a task description');
       return;
     }
 
@@ -42,7 +47,7 @@ const CollaborationModal = ({ agents, onClose, onStartCollaboration }) => {
       });
       setCollaborationResult(result);
     } catch (error) {
-      alert('Failed to start collaboration: ' + error.message);
+      setError('Failed to start collaboration: ' + error.message);
     } finally {
       setIsRunning(false);
     }
@@ -67,6 +72,12 @@ const CollaborationModal = ({ agents, onClose, onStartCollaboration }) => {
         </div>
 
         <div className="modal-body">
+          {error && (
+            <div className="error-message">
+              {error}
+            </div>
+          )}
+          
           {!collaborationResult ? (
             <>
               <div className="form-section">
@@ -171,8 +182,8 @@ const CollaborationModal = ({ agents, onClose, onStartCollaboration }) => {
               <div className="conversation-history">
                 {collaborationResult.collaboration_history?.map((msg, index) => (
                   <div
-                    key={index}
-                    className={`message ${msg.role}`}
+                    key={`${msg.timestamp}-${index}`}
+                    className={`message ${msg.role.toLowerCase()}`}
                   >
                     <div className="message-meta">
                       <span className="message-role">{msg.role}</span>

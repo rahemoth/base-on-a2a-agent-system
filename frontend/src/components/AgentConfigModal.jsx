@@ -42,8 +42,23 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
     metadata: {}
   });
 
-  const [baseUrlPreset, setBaseUrlPreset] = useState('');
-  const [customBaseUrl, setCustomBaseUrl] = useState('');
+  // Initialize base URL preset based on existing config
+  const initializeBaseUrlPreset = () => {
+    const existingUrl = agent?.config?.openai_base_url;
+    if (!existingUrl) return '';
+    
+    // Check if it matches a preset
+    const preset = BASE_URL_PRESETS.find(p => p.value === existingUrl);
+    if (preset) return preset.value;
+    
+    // Otherwise it's a custom URL
+    return 'custom';
+  };
+
+  const [baseUrlPreset, setBaseUrlPreset] = useState(initializeBaseUrlPreset());
+  const [customBaseUrl, setCustomBaseUrl] = useState(
+    baseUrlPreset === 'custom' ? agent?.config?.openai_base_url || '' : ''
+  );
 
   const [newMcpServer, setNewMcpServer] = useState({
     name: '',

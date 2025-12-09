@@ -8,6 +8,16 @@
   gap: 0.75rem;
 }
 
+.error-message {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  color: #ef4444;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+}
+
 .section-description {
   font-size: 0.875rem;
   color: var(--text-secondary);
