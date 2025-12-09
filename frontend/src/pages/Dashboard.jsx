@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Users, RefreshCw } from 'lucide-react';
+import { Plus, Users, RefreshCw, GitMerge } from 'lucide-react';
 import AgentCard from '../components/AgentCard';
 import AgentConfigModal from '../components/AgentConfigModal';
 import ChatModal from '../components/ChatModal';
+import CollaborationModal from '../components/CollaborationModal';
 import { agentService } from '../services/api';
 import './Dashboard.css';
 
@@ -12,6 +13,7 @@ const Dashboard = () => {
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState(null);
   const [chatAgent, setChatAgent] = useState(null);
+  const [showCollaborationModal, setShowCollaborationModal] = useState(false);
 
   useEffect(() => {
     loadAgents();
@@ -70,6 +72,15 @@ const Dashboard = () => {
     setChatAgent(agent);
   };
 
+  const handleStartCollaboration = async (collaborationConfig) => {
+    return await agentService.collaborate(
+      collaborationConfig.agents,
+      collaborationConfig.task,
+      collaborationConfig.coordinator_agent,
+      collaborationConfig.max_rounds
+    );
+  };
+
   return (
     <div className="dashboard">
       <header className="dashboard-header">
@@ -84,6 +95,15 @@ const Dashboard = () => {
                 <RefreshCw size={18} />
                 Refresh
               </button>
+              {agents.length >= 2 && (
+                <button 
+                  className="btn btn-secondary" 
+                  onClick={() => setShowCollaborationModal(true)}
+                >
+                  <GitMerge size={18} />
+                  Collaborate
+                </button>
+              )}
               <button className="btn btn-primary" onClick={handleCreateAgent}>
                 <Plus size={18} />
                 Create Agent
@@ -138,6 +158,14 @@ const Dashboard = () => {
         <ChatModal
           agent={chatAgent}
           onClose={() => setChatAgent(null)}
+        />
+      )}
+
+      {showCollaborationModal && (
+        <CollaborationModal
+          agents={agents}
+          onClose={() => setShowCollaborationModal(false)}
+          onStartCollaboration={handleStartCollaboration}
         />
       )}
     </div>
