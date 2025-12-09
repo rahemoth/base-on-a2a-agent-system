@@ -17,6 +17,16 @@ const OPENAI_MODELS = [
   { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' }
 ];
 
+// Preset base URLs for local LLM servers
+const BASE_URL_PRESETS = [
+  { value: '', label: 'OpenAI Official API' },
+  { value: 'http://localhost:1234/v1', label: 'LM Studio (default)' },
+  { value: 'http://localhost:8080/v1', label: 'LocalAI' },
+  { value: 'http://localhost:11434/v1', label: 'Ollama (OpenAI compatible)' },
+  { value: 'http://localhost:5000/v1', label: 'Text Generation WebUI' },
+  { value: 'custom', label: 'Custom URL...' }
+];
+
 const AgentConfigModal = ({ agent, onClose, onSave }) => {
   const [config, setConfig] = useState(agent?.config || {
     name: '',
@@ -26,10 +36,14 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
     system_prompt: '',
     temperature: 0.7,
     max_tokens: null,
+    openai_base_url: null,
     mcp_servers: [],
     capabilities: [],
     metadata: {}
   });
+
+  const [baseUrlPreset, setBaseUrlPreset] = useState('');
+  const [customBaseUrl, setCustomBaseUrl] = useState('');
 
   const [newMcpServer, setNewMcpServer] = useState({
     name: '',
@@ -127,6 +141,51 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
                 }
               </select>
             </div>
+
+            {config.provider === 'openai' && (
+              <>
+                <div className="form-group">
+                  <label>OpenAI API Base URL</label>
+                  <select
+                    value={baseUrlPreset}
+                    onChange={(e) => {
+                      const preset = e.target.value;
+                      setBaseUrlPreset(preset);
+                      if (preset === 'custom') {
+                        setConfig({ ...config, openai_base_url: customBaseUrl || null });
+                      } else {
+                        setConfig({ ...config, openai_base_url: preset || null });
+                      }
+                    }}
+                  >
+                    {BASE_URL_PRESETS.map(preset => (
+                      <option key={preset.value} value={preset.value}>{preset.label}</option>
+                    ))}
+                  </select>
+                  <small className="form-hint">
+                    Select a local LLM server or use the official OpenAI API
+                  </small>
+                </div>
+
+                {baseUrlPreset === 'custom' && (
+                  <div className="form-group">
+                    <label>Custom Base URL</label>
+                    <input
+                      type="text"
+                      value={customBaseUrl}
+                      onChange={(e) => {
+                        setCustomBaseUrl(e.target.value);
+                        setConfig({ ...config, openai_base_url: e.target.value || null });
+                      }}
+                      placeholder="http://localhost:8080/v1"
+                    />
+                    <small className="form-hint">
+                      Enter the base URL for your OpenAI-compatible API endpoint
+                    </small>
+                  </div>
+                )}
+              </>
+            )}
 
             <div className="form-group">
               <label>System Prompt</label>

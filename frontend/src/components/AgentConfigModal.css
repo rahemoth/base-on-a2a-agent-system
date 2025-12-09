@@ -92,6 +92,14 @@
   transition: all 0.2s ease;
 }
 
+.form-hint {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
 .form-group input:focus,
 .form-group textarea:focus,
 .form-group select:focus {

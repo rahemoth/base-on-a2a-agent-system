@@ -45,8 +45,10 @@ class A2AAgent:
                 if not openai_api_key:
                     raise ValueError("OpenAI API key not configured")
                 # Support custom base URLs for OpenAI-compatible APIs (e.g., LM Studio)
-                if openai_base_url:
-                    self.openai_client = AsyncOpenAI(api_key=openai_api_key, base_url=openai_base_url)
+                # Priority: 1. Per-agent config, 2. Global config parameter, 3. No custom base URL
+                base_url_to_use = self.config.openai_base_url or openai_base_url
+                if base_url_to_use:
+                    self.openai_client = AsyncOpenAI(api_key=openai_api_key, base_url=base_url_to_use)
                 else:
                     self.openai_client = AsyncOpenAI(api_key=openai_api_key)
             else:

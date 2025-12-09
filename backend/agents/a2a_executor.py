@@ -50,10 +50,12 @@ class LLMAgentExecutor(AgentExecutor):
                 self.google_client = genai.Client(api_key=self.google_api_key)
         elif self.config.provider == ModelProvider.OPENAI:
             if self.openai_api_key:
-                if self.openai_base_url:
+                # Priority: 1. Per-agent config, 2. Global config parameter, 3. No custom base URL
+                base_url_to_use = self.config.openai_base_url or self.openai_base_url
+                if base_url_to_use:
                     self.openai_client = AsyncOpenAI(
                         api_key=self.openai_api_key,
-                        base_url=self.openai_base_url
+                        base_url=base_url_to_use
                     )
                 else:
                     self.openai_client = AsyncOpenAI(api_key=self.openai_api_key)
