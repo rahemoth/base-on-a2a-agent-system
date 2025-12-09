@@ -15,6 +15,12 @@ class AgentStatus(str, Enum):
     OFFLINE = "offline"
 
 
+class ModelProvider(str, Enum):
+    """Model provider enumeration"""
+    GOOGLE = "google"
+    OPENAI = "openai"
+
+
 class MCPServerConfig(BaseModel):
     """MCP Server configuration"""
     name: str
@@ -27,6 +33,7 @@ class AgentConfig(BaseModel):
     """Agent configuration model"""
     name: str = Field(..., description="Agent name")
     description: str = Field("", description="Agent description")
+    provider: ModelProvider = Field(ModelProvider.GOOGLE, description="Model provider (google or openai)")
     model: str = Field("gemini-2.0-flash-exp", description="Model to use")
     system_prompt: Optional[str] = Field(None, description="System prompt for the agent")
     temperature: float = Field(0.7, ge=0.0, le=2.0, description="Temperature for generation")

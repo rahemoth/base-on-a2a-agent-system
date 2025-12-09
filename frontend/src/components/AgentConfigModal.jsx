@@ -2,10 +2,26 @@ import React, { useState } from 'react';
 import { X, Plus, Trash2 } from 'lucide-react';
 import './AgentConfigModal.css';
 
+// Supported models for each provider
+const GOOGLE_MODELS = [
+  { value: 'gemini-2.0-flash-exp', label: 'Gemini 2.0 Flash' },
+  { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro' },
+  { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash' }
+];
+
+const OPENAI_MODELS = [
+  { value: 'gpt-4', label: 'GPT-4' },
+  { value: 'gpt-4-turbo', label: 'GPT-4 Turbo' },
+  { value: 'gpt-4o', label: 'GPT-4o' },
+  { value: 'gpt-4o-mini', label: 'GPT-4o Mini' },
+  { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' }
+];
+
 const AgentConfigModal = ({ agent, onClose, onSave }) => {
   const [config, setConfig] = useState(agent?.config || {
     name: '',
     description: '',
+    provider: 'google',
     model: 'gemini-2.0-flash-exp',
     system_prompt: '',
     temperature: 0.7,
@@ -79,14 +95,36 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
             </div>
 
             <div className="form-group">
+              <label>Provider *</label>
+              <select
+                value={config.provider}
+                onChange={(e) => {
+                  const provider = e.target.value;
+                  const defaultModel = provider === 'openai' 
+                    ? OPENAI_MODELS[0].value 
+                    : GOOGLE_MODELS[0].value;
+                  setConfig({ ...config, provider, model: defaultModel });
+                }}
+              >
+                <option value="google">Google (Gemini)</option>
+                <option value="openai">OpenAI (GPT)</option>
+              </select>
+            </div>
+
+            <div className="form-group">
               <label>Model *</label>
               <select
                 value={config.model}
                 onChange={(e) => setConfig({ ...config, model: e.target.value })}
               >
-                <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash</option>
-                <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
-                <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+                {config.provider === 'google' 
+                  ? GOOGLE_MODELS.map(model => (
+                      <option key={model.value} value={model.value}>{model.label}</option>
+                    ))
+                  : OPENAI_MODELS.map(model => (
+                      <option key={model.value} value={model.value}>{model.label}</option>
+                    ))
+                }
               </select>
             </div>
 

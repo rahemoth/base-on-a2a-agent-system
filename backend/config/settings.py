@@ -11,6 +11,10 @@ class Settings(BaseSettings):
     # API Keys
     google_api_key: Optional[str] = None
     anthropic_api_key: Optional[str] = None
+    openai_api_key: Optional[str] = None
+    
+    # OpenAI Configuration (supports OpenAI-compatible APIs like LM Studio)
+    openai_base_url: Optional[str] = None  # e.g., http://localhost:1234/v1 for LM Studio
     
     # Server Configuration
     host: str = "0.0.0.0"
