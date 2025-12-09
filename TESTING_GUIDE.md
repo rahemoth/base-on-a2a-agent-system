@@ -76,7 +76,8 @@ npm install
 2. 点击"创建 Agent"
 3. 选择 "本地 AI 模型 (LM Studio, Ollama 等)" 作为提供商
 4. 在"模型名称"输入框输入模型标识符（如 `google/gemma-3-4b`）
-5. 在"API 基础 URL"输入框输入 LM Studio 服务器地址 + `/v1`（如 `http://192.168.175.1:1234/v1`）
+5. 在"API 基础 URL"输入框输入 LM Studio 服务器地址（如 `http://192.168.175.1:1234`）
+   **注意**: 不要包含 `/v1` 后缀，OpenAI SDK 会自动添加
 6. 填写其他信息（名称、描述、系统提示词等）
 7. 点击"创建 Agent"
 

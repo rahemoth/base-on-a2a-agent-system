@@ -214,7 +214,8 @@ ANTHROPIC_API_KEY=你的_anthropic_api_key
 # OpenAI 配置 (可选)
 # 用于连接 OpenAI 兼容的 API，如 LM Studio、LocalAI 等
 # 如果未设置，使用官方 OpenAI API 端点
-OPENAI_BASE_URL=http://localhost:1234/v1
+# 注意：不要包含 /v1 后缀 - OpenAI SDK 会自动添加
+OPENAI_BASE_URL=http://localhost:1234
 
 HOST=0.0.0.0
 PORT=8000
@@ -235,11 +236,12 @@ ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
 2. **在仪表盘创建或编辑agent**
 3. **选择 "OpenAI (GPT)" 作为提供商**
 4. **在 "OpenAI API Base URL" 下拉菜单中选择预设**：
-   - LM Studio (默认)：`http://localhost:1234/v1`
-   - LocalAI：`http://localhost:8080/v1`
-   - Ollama：`http://localhost:11434/v1`
-   - Text Generation WebUI：`http://localhost:5000/v1`
+   - LM Studio (默认)：`http://localhost:1234`
+   - LocalAI：`http://localhost:8080`
+   - Ollama：`http://localhost:11434`
+   - Text Generation WebUI：`http://localhost:5000`
    - 或选择 "Custom URL..." 输入自定义地址
+   - **注意**：不要在 URL 末尾添加 `/v1` - OpenAI SDK 会自动添加
 5. **配置 API 密钥** (本地模型时可填任意字符串)
 6. **选择模型** (使用本地服务器支持的模型名称)
 
@@ -254,8 +256,9 @@ ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
 3. **配置 .env 文件**：
    ```env
    OPENAI_API_KEY=lm-studio  # 本地模型时可为任意字符串
-   OPENAI_BASE_URL=http://localhost:1234/v1
+   OPENAI_BASE_URL=http://localhost:1234
    ```
+   **注意**：不要在 URL 末尾添加 `/v1` - OpenAI SDK 会自动添加
 4. **创建agent** 时使用 `provider: "openai"` 并选择 LM Studio 支持的模型名称
 
 **注意**：逐个agent配置优先于全局环境变量。
@@ -279,7 +282,7 @@ ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
   "system_prompt": "string",
   "temperature": 0.7,
   "max_tokens": null,
-  "openai_base_url": "http://localhost:1234/v1",
+  "openai_base_url": "http://localhost:1234",
   "mcp_servers": [
     {
       "name": "string",
@@ -379,7 +382,7 @@ npm run build
 
 **解决方案**: 这通常是因为 LLM 服务未运行或配置不正确。请：
 1. 确保 LM Studio/LocalAI 等本地服务正在运行
-2. 检查 API 端点配置是否正确（默认 LM Studio: `http://localhost:1234/v1`）
+2. 检查 API 端点配置是否正确（默认 LM Studio: `http://localhost:1234`，不要包含 `/v1`）
 3. 查看后端日志中的连接错误
 4. 参阅 [LM Studio 集成修复文档](docs/LM_STUDIO_FIX.md)
 
@@ -391,6 +394,7 @@ npm run build
 2. 验证端口是否正确（默认 1234）
 3. 检查防火墙设置是否阻止了连接
 4. 尝试直接访问 `http://localhost:1234/v1/models` 验证 API 是否可访问
+   **注意**：虽然在配置中不包含 `/v1`，但 API 端点本身仍然使用 `/v1` 路径
 
 ### 空响应内容 (Empty content in response)
 **问题**: API 返回 "Empty content in response" 错误

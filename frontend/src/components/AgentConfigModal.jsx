@@ -39,7 +39,7 @@ const PROVIDERS = {
     label: '本地 AI 模型 (LM Studio, Ollama 等)',
     requiresApiKey: false,
     requiresModelInput: true,
-    defaultBaseUrl: 'http://localhost:1234/v1',
+    defaultBaseUrl: 'http://localhost:1234',
     defaultModel: 'local-model',
     isLocal: true
   }
@@ -280,13 +280,13 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
                   type="text"
                   value={config.api_base_url || ''}
                   onChange={(e) => setConfig({ ...config, api_base_url: e.target.value || null })}
-                  placeholder={providerInfo.defaultBaseUrl || 'http://localhost:8080/v1'}
+                  placeholder={providerInfo.defaultBaseUrl || 'http://localhost:8080'}
                   required
                 />
                 <small className="form-hint">
                   {providerInfo.defaultBaseUrl 
-                    ? `默认值: ${providerInfo.defaultBaseUrl}` 
-                    : '输入您的 OpenAI 兼容 API 端点的基础 URL'}
+                    ? `默认值: ${providerInfo.defaultBaseUrl} (不要包含 /v1 后缀)` 
+                    : '输入您的 OpenAI 兼容 API 端点的基础 URL (不要包含 /v1 后缀)'}
                 </small>
               </div>
             )}

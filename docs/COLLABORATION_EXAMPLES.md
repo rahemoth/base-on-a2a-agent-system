@@ -18,7 +18,7 @@ This document provides practical examples of using the new multi-agent collabora
   "description": "Expert in system design and architecture",
   "provider": "openai",
   "model": "llama-2-7b-chat",
-  "openai_base_url": "http://localhost:1234/v1",
+  "openai_base_url": "http://localhost:1234",
   "system_prompt": "You are an experienced software architect specializing in scalable systems. Focus on architectural patterns, design principles, and best practices.",
   "temperature": 0.7
 }
@@ -31,7 +31,7 @@ This document provides practical examples of using the new multi-agent collabora
   "description": "Expert in backend development and APIs",
   "provider": "openai",
   "model": "llama-2-7b-chat",
-  "openai_base_url": "http://localhost:1234/v1",
+  "openai_base_url": "http://localhost:1234",
   "system_prompt": "You are a skilled backend developer with expertise in API design, databases, and server-side logic. Focus on implementation details and code structure.",
   "temperature": 0.7
 }
@@ -44,10 +44,13 @@ This document provides practical examples of using the new multi-agent collabora
   "description": "Expert in UI/UX and frontend technologies",
   "provider": "openai",
   "model": "llama-2-7b-chat",
-  "openai_base_url": "http://localhost:1234/v1",
+  "openai_base_url": "http://localhost:1234",
   "system_prompt": "You are a creative frontend developer specializing in modern UI frameworks and user experience. Focus on interface design and client-side implementation.",
   "temperature": 0.8
 }
+```
+
+**Note**: Base URLs should NOT include `/v1` suffix - the OpenAI SDK adds it automatically.
 ```
 
 ### Step 3: Start Collaboration
@@ -92,7 +95,7 @@ You can create a team where some agents use cloud models and others use local mo
   "name": "Code Generator",
   "provider": "openai",
   "model": "codellama-7b",
-  "openai_base_url": "http://localhost:1234/v1",
+  "openai_base_url": "http://localhost:1234",
   "system_prompt": "You are a code generation specialist. Write clean, efficient code."
 }
 ```

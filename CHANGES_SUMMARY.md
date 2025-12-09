@@ -140,7 +140,8 @@ const handleOverlayClick = (e) => {
 2. 在界面中点击"创建 Agent"
 3. 选择"本地 AI 模型 (LM Studio, Ollama 等)"作为提供商
 4. 输入您的模型名称（例如：`google/gemma-3-4b`）
-5. 输入 API 基础 URL（例如：`http://192.168.175.1:1234/v1`）
+5. 输入 API 基础 URL（例如：`http://192.168.175.1:1234`）
+   **注意**: 不要包含 `/v1` 后缀，OpenAI SDK 会自动添加
 6. 点击"创建 Agent"
 
 ### 测试连接 / Testing Connection
@@ -157,9 +158,10 @@ const handleOverlayClick = (e) => {
 后端现在会使用标准 Python logging 模块输出调试日志：
 ```
 2024-12-09 20:00:00 - backend.agents.a2a_agent - DEBUG - Sending request to lmstudio with model google/gemma-3-4b
-2024-12-09 20:00:00 - backend.agents.a2a_agent - DEBUG - API base URL: http://192.168.175.1:1234/v1
+2024-12-09 20:00:00 - backend.agents.a2a_agent - DEBUG - API base URL: http://192.168.175.1:1234
 2024-12-09 20:00:01 - backend.agents.a2a_agent - DEBUG - Received response: 你好！我是...
 ```
+**注意**: 调试日志中的 URL 不包含 `/v1`，因为 OpenAI SDK 会自动添加。
 
 如果出现错误，日志会显示：
 ```

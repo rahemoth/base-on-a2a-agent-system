@@ -30,10 +30,11 @@ This implementation addresses the issue requesting:
 - **Added**: OpenAI Base URL configuration section (only visible for OpenAI provider)
 - **Features**:
   - Preset dropdown with popular local LLM servers:
-    - LM Studio (http://localhost:1234/v1)
-    - LocalAI (http://localhost:8080/v1)
-    - Ollama (http://localhost:11434/v1)
-    - Text Generation WebUI (http://localhost:5000/v1)
+    - LM Studio (http://localhost:1234)
+    - LocalAI (http://localhost:8080)
+    - Ollama (http://localhost:11434)
+    - Text Generation WebUI (http://localhost:5000)
+    - Note: URLs should NOT include /v1 suffix - OpenAI SDK adds it automatically
   - Custom URL input for any OpenAI-compatible API
   - Proper initialization from existing agent config when editing
   - Help text explaining the purpose
