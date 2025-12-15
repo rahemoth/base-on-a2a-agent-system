@@ -23,6 +23,10 @@ from backend.agents.tools import EnhancedToolManager
 # Configure logger
 logger = logging.getLogger(__name__)
 
+# Constants for content truncation
+CONTENT_SUMMARY_LENGTH = 200  # For summarizing content in memory
+CONTENT_RESULT_LENGTH = 500   # For storing task results
+
 
 class LLMAgentExecutor(AgentExecutor):
     """
@@ -148,7 +152,7 @@ class LLMAgentExecutor(AgentExecutor):
         try:
             # Get the incoming message
             message = request_context.message
-            task_id = message.task_id or f"task_{self.agent_id}_{int(datetime.now().timestamp())}"
+            task_id = message.task_id or f"task_{self.agent_id}_{uuid.uuid4()}"
             
             # Extract text content from message parts
             text_content = self._extract_text_from_message(message)
@@ -271,7 +275,7 @@ class LLMAgentExecutor(AgentExecutor):
             # Save important information to long-term memory
             await self.memory.add_to_long_term(
                 memory_type="conversation",
-                content=f"Q: {text_content[:200]}... A: {response_text[:200]}...",
+                content=f"Q: {text_content[:CONTENT_SUMMARY_LENGTH]}... A: {response_text[:CONTENT_SUMMARY_LENGTH]}...",
                 metadata={
                     "task_id": task_id,
                     "decision_type": decision["decision_type"],
@@ -284,7 +288,7 @@ class LLMAgentExecutor(AgentExecutor):
             await self.memory.update_task(
                 task_id=task_id,
                 status="completed",
-                result=response_text[:500]  # Store first 500 chars
+                result=response_text[:CONTENT_RESULT_LENGTH]  # Store first 500 chars
             )
             
             # Update execution plan status

@@ -196,16 +196,19 @@ class AgentMemory:
                     }
                     memories.append(memory)
                 
-                # Update access count
+                # Update access count with parameterized query
                 if memories:
                     memory_ids = [m["id"] for m in memories]
                     placeholders = ",".join("?" * len(memory_ids))
-                    await db.execute(f"""
+                    # Build parameterized query safely
+                    update_query = f"""
                         UPDATE long_term_memory 
                         SET accessed_count = accessed_count + 1,
                             last_accessed = ?
                         WHERE id IN ({placeholders})
-                    """, [datetime.now(timezone.utc).isoformat()] + memory_ids)
+                    """
+                    update_params = [datetime.now(timezone.utc).isoformat()] + memory_ids
+                    await db.execute(update_query, update_params)
                     await db.commit()
                 
                 return memories

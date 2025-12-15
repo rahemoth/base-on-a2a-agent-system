@@ -7,7 +7,7 @@ import json
 import hashlib
 from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime, timezone, timedelta
-from collections import defaultdict
+from collections import defaultdict, Counter
 
 logger = logging.getLogger(__name__)
 
@@ -515,7 +515,6 @@ class EnhancedToolManager:
             stop_words = {"the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for"}
             keywords = [w for w in words if w not in stop_words and len(w) > 3]
             # Count frequency
-            from collections import Counter
             counter = Counter(keywords)
             return [word for word, _ in counter.most_common(count)]
         
