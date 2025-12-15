@@ -3,6 +3,9 @@ import { X, Plus, Trash2, Save } from 'lucide-react';
 import { storageService } from '../services/storage';
 import './AgentConfigModal.css';
 
+// Constants
+const SETTINGS_SAVE_DEBOUNCE_MS = 1000; // Debounce delay for auto-save
+
 // Supported models for each provider
 const GOOGLE_MODELS = [
   { value: 'gemini-2.0-flash-exp', label: 'Gemini 2.0 Flash' },
@@ -78,7 +81,7 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
     if (agent?.id && config.name) {
       const timeoutId = setTimeout(() => {
         storageService.saveAgentSettings(agent.id, config);
-      }, 1000); // Debounce for 1 second
+      }, SETTINGS_SAVE_DEBOUNCE_MS);
 
       return () => clearTimeout(timeoutId);
     }

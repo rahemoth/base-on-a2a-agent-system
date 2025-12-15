@@ -2,6 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { X, Play, Users } from 'lucide-react';
 import './CollaborationModal.css';
 
+// Constants
+const MESSAGE_DISPLAY_DELAY = 300; // milliseconds between messages
+
 const CollaborationModal = ({ agents, onClose, onStartCollaboration }) => {
   const [selectedAgents, setSelectedAgents] = useState([]);
   const [task, setTask] = useState('');
@@ -72,9 +75,8 @@ const CollaborationModal = ({ agents, onClose, onStartCollaboration }) => {
       
       // Display messages one by one with delay for real-time effect
       if (result.collaboration_history) {
-        for (let i = 0; i < result.collaboration_history.length; i++) {
-          const msg = result.collaboration_history[i];
-          await new Promise(resolve => setTimeout(resolve, 300)); // Small delay between messages
+        for (const msg of result.collaboration_history) {
+          await new Promise(resolve => setTimeout(resolve, MESSAGE_DISPLAY_DELAY));
           setRealtimeMessages(prev => [...prev, msg]);
           
           // Update round number from system messages
