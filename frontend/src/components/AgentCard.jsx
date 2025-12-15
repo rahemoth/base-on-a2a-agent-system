@@ -1,8 +1,8 @@
 import React from 'react';
-import { Bot, Trash2, MessageSquare, Settings } from 'lucide-react';
+import { Bot, Trash2, MessageSquare, Settings, Eye } from 'lucide-react';
 import './AgentCard.css';
 
-const AgentCard = ({ agent, onDelete, onConfigure, onChat }) => {
+const AgentCard = ({ agent, onDelete, onConfigure, onChat, onViewInsights }) => {
   const getStatusColor = (status) => {
     switch (status) {
       case 'idle': return '#10b981';
@@ -60,6 +60,9 @@ const AgentCard = ({ agent, onDelete, onConfigure, onChat }) => {
       <div className="agent-actions">
         <button className="btn btn-icon" onClick={() => onChat(agent)} title="聊天">
           <MessageSquare size={18} />
+        </button>
+        <button className="btn btn-icon" onClick={() => onViewInsights(agent)} title="查看洞察">
+          <Eye size={18} />
         </button>
         <button className="btn btn-icon" onClick={() => onConfigure(agent)} title="配置">
           <Settings size={18} />

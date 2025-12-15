@@ -80,4 +80,98 @@ export const mcpService = {
   },
 };
 
+// Agent Memory API
+export const memoryService = {
+  async getShortTermMemory(agentId, limit = null) {
+    const params = limit ? { limit } : {};
+    const response = await api.get(`/api/agents/${agentId}/memory/short-term`, { params });
+    return response.data;
+  },
+
+  async getLongTermMemory(agentId, memoryType = null, limit = 10, minImportance = 0.0) {
+    const params = { limit, min_importance: minImportance };
+    if (memoryType) params.memory_type = memoryType;
+    const response = await api.get(`/api/agents/${agentId}/memory/long-term`, { params });
+    return response.data;
+  },
+
+  async getTaskHistory(agentId, limit = 10, status = null) {
+    const params = { limit };
+    if (status) params.status = status;
+    const response = await api.get(`/api/agents/${agentId}/memory/tasks`, { params });
+    return response.data;
+  },
+
+  async getEnvironmentContext(agentId) {
+    const response = await api.get(`/api/agents/${agentId}/memory/environment`);
+    return response.data;
+  },
+
+  async clearShortTermMemory(agentId) {
+    const response = await api.delete(`/api/agents/${agentId}/memory/short-term`);
+    return response.data;
+  },
+};
+
+// Agent Cognitive API
+export const cognitiveService = {
+  async getCognitiveState(agentId) {
+    const response = await api.get(`/api/agents/${agentId}/cognitive/state`);
+    return response.data;
+  },
+
+  async getReasoningChain(agentId, limit = 5) {
+    const response = await api.get(`/api/agents/${agentId}/cognitive/reasoning-chain`, {
+      params: { limit }
+    });
+    return response.data;
+  },
+
+  async getCurrentPlan(agentId) {
+    const response = await api.get(`/api/agents/${agentId}/cognitive/current-plan`);
+    return response.data;
+  },
+
+  async getFeedbackHistory(agentId, limit = 10) {
+    const response = await api.get(`/api/agents/${agentId}/cognitive/feedback-history`, {
+      params: { limit }
+    });
+    return response.data;
+  },
+};
+
+// Agent Tools API
+export const toolsService = {
+  async listTools(agentId, query = null, category = null) {
+    const params = {};
+    if (query) params.query = query;
+    if (category) params.category = category;
+    const response = await api.get(`/api/agents/${agentId}/tools`, { params });
+    return response.data;
+  },
+
+  async getToolCategories(agentId) {
+    const response = await api.get(`/api/agents/${agentId}/tools/categories`);
+    return response.data;
+  },
+
+  async getToolStatistics(agentId, toolName = null) {
+    const params = toolName ? { tool_name: toolName } : {};
+    const response = await api.get(`/api/agents/${agentId}/tools/statistics`, { params });
+    return response.data;
+  },
+
+  async getToolExecutionHistory(agentId, toolName = null, limit = 10) {
+    const params = { limit };
+    if (toolName) params.tool_name = toolName;
+    const response = await api.get(`/api/agents/${agentId}/tools/execution-history`, { params });
+    return response.data;
+  },
+
+  async getToolReport(agentId) {
+    const response = await api.get(`/api/agents/${agentId}/tools/report`);
+    return response.data;
+  },
+};
+
 export default api;

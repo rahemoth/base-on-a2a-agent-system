@@ -4,6 +4,7 @@ import AgentCard from '../components/AgentCard';
 import AgentConfigModal from '../components/AgentConfigModal';
 import ChatModal from '../components/ChatModal';
 import CollaborationModal from '../components/CollaborationModal';
+import AgentInsightsModal from '../components/AgentInsightsModal';
 import { agentService } from '../services/api';
 import './Dashboard.css';
 
@@ -14,6 +15,7 @@ const Dashboard = () => {
   const [selectedAgent, setSelectedAgent] = useState(null);
   const [chatAgent, setChatAgent] = useState(null);
   const [showCollaborationModal, setShowCollaborationModal] = useState(false);
+  const [insightsAgent, setInsightsAgent] = useState(null);
 
   useEffect(() => {
     loadAgents();
@@ -70,6 +72,10 @@ const Dashboard = () => {
 
   const handleChatAgent = (agent) => {
     setChatAgent(agent);
+  };
+
+  const handleViewInsights = (agent) => {
+    setInsightsAgent(agent);
   };
 
   const handleStartCollaboration = async (collaborationConfig) => {
@@ -139,6 +145,7 @@ const Dashboard = () => {
                   onDelete={handleDeleteAgent}
                   onConfigure={handleConfigureAgent}
                   onChat={handleChatAgent}
+                  onViewInsights={handleViewInsights}
                 />
               ))}
             </div>
@@ -166,6 +173,13 @@ const Dashboard = () => {
           agents={agents}
           onClose={() => setShowCollaborationModal(false)}
           onStartCollaboration={handleStartCollaboration}
+        />
+      )}
+
+      {insightsAgent && (
+        <AgentInsightsModal
+          agent={insightsAgent}
+          onClose={() => setInsightsAgent(null)}
         />
       )}
     </div>
