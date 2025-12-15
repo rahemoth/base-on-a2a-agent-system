@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, Play, Users } from 'lucide-react';
 import './CollaborationModal.css';
 
@@ -10,6 +10,17 @@ const CollaborationModal = ({ agents, onClose, onStartCollaboration }) => {
   const [collaborationResult, setCollaborationResult] = useState(null);
   const [isRunning, setIsRunning] = useState(false);
   const [error, setError] = useState(null);
+  const [realtimeMessages, setRealtimeMessages] = useState([]);
+  const [currentRound, setCurrentRound] = useState(0);
+  const messagesEndRef = useRef(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [realtimeMessages]);
 
   const handleAgentToggle = (agentId) => {
     setSelectedAgents(prev => {
@@ -37,14 +48,42 @@ const CollaborationModal = ({ agents, onClose, onStartCollaboration }) => {
 
     setIsRunning(true);
     setCollaborationResult(null);
+    setRealtimeMessages([]);
+    setCurrentRound(0);
+
+    // Add initial system message
+    const initialMsg = {
+      role: 'system',
+      content: `开始协作任务: ${task}`,
+      timestamp: new Date().toISOString(),
+      metadata: {}
+    };
+    setRealtimeMessages([initialMsg]);
 
     try {
+      // Simulate real-time updates by calling the API
+      // In a real implementation, this could use WebSocket or Server-Sent Events
       const result = await onStartCollaboration({
         agents: selectedAgents,
         task: task,
         coordinator_agent: coordinatorAgent || null,
         max_rounds: maxRounds
       });
+      
+      // Display messages one by one with delay for real-time effect
+      if (result.collaboration_history) {
+        for (let i = 0; i < result.collaboration_history.length; i++) {
+          const msg = result.collaboration_history[i];
+          await new Promise(resolve => setTimeout(resolve, 300)); // Small delay between messages
+          setRealtimeMessages(prev => [...prev, msg]);
+          
+          // Update round number from system messages
+          if (msg.role === 'system' && msg.metadata?.round) {
+            setCurrentRound(msg.metadata.round);
+          }
+        }
+      }
+      
       setCollaborationResult(result);
     } catch (error) {
       setError('启动协作失败: ' + error.message);
@@ -168,40 +207,74 @@ const CollaborationModal = ({ agents, onClose, onStartCollaboration }) => {
             </>
           ) : (
             <div className="collaboration-results">
-              <div className="results-header">
-                <h3>协作结果</h3>
-                <button
-                  className="btn btn-secondary"
-                  onClick={() => setCollaborationResult(null)}
-                >
-                  开始新协作
-                </button>
-              </div>
+              {isRunning && (
+                <div className="collaboration-progress">
+                  <div className="progress-header">
+                    <h3>协作进行中...</h3>
+                    <div className="progress-info">
+                      <span>当前轮次: {currentRound} / {maxRounds}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
               
               <div className="conversation-history">
-                {collaborationResult.collaboration_history?.map((msg, index) => (
+                {realtimeMessages.map((msg, index) => (
                   <div
                     key={`${msg.timestamp}-${index}`}
-                    className={`message ${msg.role.toLowerCase()}`}
+                    className={`message ${msg.role.toLowerCase()} ${index === realtimeMessages.length - 1 ? 'latest' : ''}`}
                   >
                     <div className="message-meta">
                       <span className="message-role">{msg.role === 'system' ? '系统' : 'Agent'}</span>
                       {msg.metadata?.agent_name && (
                         <span className="message-agent">{msg.metadata.agent_name}</span>
                       )}
+                      {msg.metadata?.round && (
+                        <span className="message-round">轮次 {msg.metadata.round}</span>
+                      )}
                       <span className="message-time">
                         {new Date(msg.timestamp).toLocaleTimeString()}
                       </span>
                     </div>
                     <div className="message-content">{msg.content}</div>
+                    {msg.metadata?.completed !== undefined && (
+                      <div className="message-status">
+                        {msg.metadata.completed ? '✓ 已完成' : '⏳ 进行中'}
+                      </div>
+                    )}
                   </div>
                 ))}
+                {isRunning && (
+                  <div className="message agent">
+                    <div className="typing-indicator">
+                      <span></span>
+                      <span></span>
+                      <span></span>
+                    </div>
+                  </div>
+                )}
+                <div ref={messagesEndRef} />
               </div>
+              
+              {collaborationResult && !isRunning && (
+                <div className="results-footer">
+                  <button
+                    className="btn btn-secondary"
+                    onClick={() => {
+                      setCollaborationResult(null);
+                      setRealtimeMessages([]);
+                      setCurrentRound(0);
+                    }}
+                  >
+                    开始新协作
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
 
-        {!collaborationResult && (
+        {!collaborationResult && !isRunning && (
           <div className="modal-footer">
             <button className="btn btn-secondary" onClick={onClose} disabled={isRunning}>
               取消
