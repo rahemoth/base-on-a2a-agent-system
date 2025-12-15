@@ -18,6 +18,7 @@ from backend.mcp import mcp_manager
 from backend.utils.a2a_utils import extract_text_from_parts
 from backend.agents.memory import AgentMemory
 from backend.agents.cognitive import CognitiveProcessor
+from backend.agents.tools import EnhancedToolManager
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -51,6 +52,9 @@ class LLMAgentExecutor(AgentExecutor):
         # Initialize memory and cognitive systems
         self.memory = AgentMemory(agent_id=agent_id)
         self.cognitive = CognitiveProcessor(agent_id=agent_id, agent_name=config.name)
+        
+        # Initialize enhanced tool manager (will be fully initialized in initialize_mcp)
+        self.tool_manager = None
         
         self._initialize_clients()
     
@@ -121,6 +125,17 @@ class LLMAgentExecutor(AgentExecutor):
                     args=mcp_config.args,
                     env=mcp_config.env
                 )
+        
+        # Initialize enhanced tool manager with MCP client
+        self.tool_manager = EnhancedToolManager(
+            agent_id=self.agent_id,
+            mcp_client=self.mcp_client
+        )
+        
+        # Discover available tools
+        await self.tool_manager.discover_tools()
+        
+        logger.info(f"Agent {self.agent_id}: Initialized with {len(self.tool_manager.tools)} tools")
     
     async def execute(self, request_context: RequestContext, event_queue: EventQueue) -> None:
         """
@@ -163,15 +178,14 @@ class LLMAgentExecutor(AgentExecutor):
                 status="started"
             )
             
-            # Get available tools for perception
+            # Get available tools for perception using enhanced tool manager
             available_tools = []
-            if self.mcp_client:
+            if self.tool_manager:
                 try:
-                    mcp_tools = await self.mcp_client.list_tools()
-                    for server_name, tools in mcp_tools.items():
-                        available_tools.extend([f"{server_name}_{tool['name']}" for tool in tools])
+                    all_tools = await self.tool_manager.discover_tools()
+                    available_tools = [tool.name for tool in all_tools]
                 except Exception as e:
-                    logger.warning(f"Agent {self.agent_id}: Error listing MCP tools: {e}")
+                    logger.warning(f"Agent {self.agent_id}: Error discovering tools: {e}")
             
             # Get conversation context from task
             context_messages = []
