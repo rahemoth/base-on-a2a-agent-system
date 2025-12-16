@@ -345,28 +345,28 @@ class A2AAgentManager:
                         
                         message_to_send = f"""任务: {task}
 
-你是协调员智能体，与 {len(agent_ids) - 1} 个其他智能体协作。
-
-可用智能体及其能力:
-{agents_info}
-
-重要约束:
-- 总共有 {max_rounds} 轮完成此任务
-- 当前是第 1/{max_rounds} 轮
-- 任务必须在第 {max_rounds} 轮结束前完成
-- 你需要为每个智能体分配具体的子任务
-
-你作为协调员的职责:
-1. 将主任务分解为更小的子任务
-2. 根据每个智能体的能力和系统提示，为其分配合适的子任务
-3. 明确指定谁做什么（例如："{first_agent_name} 应该..."）
-4. 协调工作并确保在 {max_rounds} 轮内完成
-
-请提供:
-- 你的工作分配计划
-- 每个智能体的具体分配
-
-你的协调响应:"""
+                        你是协调员智能体，与 {len(agent_ids) - 1} 个其他智能体协作。
+                        
+                        可用智能体及其能力:
+                        {agents_info}
+                        
+                        重要约束:
+                        - 总共有 {max_rounds} 轮完成此任务
+                        - 当前是第 1/{max_rounds} 轮
+                        - 任务必须在第 {max_rounds} 轮结束前完成
+                        - 你需要为每个智能体分配具体的子任务
+                        
+                        你作为协调员的职责:
+                        1. 将主任务分解为更小的子任务
+                        2. 根据每个智能体的能力和系统提示，为其分配合适的子任务
+                        3. 明确指定谁做什么（例如："{first_agent_name} 应该..."）
+                        4. 协调工作并确保在 {max_rounds} 轮内完成
+                        
+                        请提供:
+                        - 你的工作分配计划
+                        - 每个智能体的具体分配
+                        
+                        你的协调响应:"""
                     else:
                         # Subsequent coordinator prompts
                         worker_results = [
@@ -383,17 +383,17 @@ class A2AAgentManager:
                         
                         message_to_send = f"""第 {round_num + 1}/{max_rounds} 轮 - 注意：任务必须在第 {max_rounds} 轮前完成
 
-工作智能体已完成第 {round_num} 轮的分配任务:
-{results_summary if results_summary else "暂无工作者响应"}
-
-剩余轮次: {max_rounds - round_num}
-
-作为协调员，请:
-1. 审查已完成的工作
-2. 如需要，为智能体分配下一步任务，或
-3. 如任务完成，整合最终结果
-
-你的协调响应:"""
+                        工作智能体已完成第 {round_num} 轮的分配任务:
+                        {results_summary if results_summary else "暂无工作者响应"}
+                        
+                        剩余轮次: {max_rounds - round_num}
+                        
+                        作为协调员，请:
+                        1. 审查已完成的工作
+                        2. 如需要，为智能体分配下一步任务，或
+                        3. 如任务完成，整合最终结果
+                        
+                        你的协调响应:"""
                 else:
                     # Message for worker agents
                     # Find the latest coordinator message that might contain their assignment
@@ -407,23 +407,23 @@ class A2AAgentManager:
                         latest_coordination = coordinator_messages[-1]['content']
                         message_to_send = f"""第 {round_num + 1}/{max_rounds} 轮 - 任务截止：第 {max_rounds} 轮
 
-协调员指示:
-{latest_coordination}
-
-根据上述协调员的分配，完成你的具体子任务。
-只专注于分配给你的工作。
-
-你的工作成果:"""
+                        协调员指示:
+                        {latest_coordination}
+                        
+                        根据上述协调员的分配，完成你的具体子任务。
+                        只专注于分配给你的工作。
+                        
+                        你的工作成果:"""
                     else:
                         # Fallback if no coordinator message yet
                         message_to_send = f"""第 {round_num + 1}/{max_rounds} 轮 - 任务截止：第 {max_rounds} 轮
 
-主任务: {task}
+                        主任务: {task}
+                        
+                        等待协调员分配并完成你被分配的子任务。
+                        
+                        你的工作成果:"""
 
-等待协调员分配并完成你被分配的子任务。
-
-你的工作成果:"""
-                
                 # Send message to agent and wait for completion
                 try:
                     response = await self.send_message(agent_id, message_to_send)
@@ -600,28 +600,28 @@ class A2AAgentManager:
                         
                         message_to_send = f"""任务: {task}
 
-你是协调员智能体，与 {len(agent_ids) - 1} 个其他智能体协作。
-
-可用智能体及其能力:
-{agents_info}
-
-重要约束:
-- 总共有 {max_rounds} 轮完成此任务
-- 当前是第 1/{max_rounds} 轮
-- 任务必须在第 {max_rounds} 轮结束前完成
-- 你需要为每个智能体分配具体的子任务
-
-你作为协调员的职责:
-1. 将主任务分解为更小的子任务
-2. 根据每个智能体的能力和系统提示，为其分配合适的子任务
-3. 明确指定谁做什么（例如："{first_agent_name} 应该..."）
-4. 协调工作并确保在 {max_rounds} 轮内完成
-
-请提供:
-- 你的工作分配计划
-- 每个智能体的具体分配
-
-你的协调响应:"""
+                        你是协调员智能体，与 {len(agent_ids) - 1} 个其他智能体协作。
+                        
+                        可用智能体及其能力:
+                        {agents_info}
+                        
+                        重要约束:
+                        - 总共有 {max_rounds} 轮完成此任务
+                        - 当前是第 1/{max_rounds} 轮
+                        - 任务必须在第 {max_rounds} 轮结束前完成
+                        - 你需要为每个智能体分配具体的子任务
+                        
+                        你作为协调员的职责:
+                        1. 将主任务分解为更小的子任务
+                        2. 根据每个智能体的能力和系统提示，为其分配合适的子任务
+                        3. 明确指定谁做什么（例如："{first_agent_name} 应该..."）
+                        4. 协调工作并确保在 {max_rounds} 轮内完成
+                        
+                        请提供:
+                        - 你的工作分配计划
+                        - 每个智能体的具体分配
+                        
+                        你的协调响应:"""
                     else:
                         # Subsequent coordinator prompts
                         worker_results = [
@@ -638,17 +638,17 @@ class A2AAgentManager:
                         
                         message_to_send = f"""第 {round_num + 1}/{max_rounds} 轮 - 注意：任务必须在第 {max_rounds} 轮前完成
 
-工作智能体已完成第 {round_num} 轮的分配任务:
-{results_summary if results_summary else "暂无工作者响应"}
-
-剩余轮次: {max_rounds - round_num}
-
-作为协调员，请:
-1. 审查已完成的工作
-2. 如需要，为智能体分配下一步任务，或
-3. 如任务完成，整合最终结果
-
-你的协调响应:"""
+                        工作智能体已完成第 {round_num} 轮的分配任务:
+                        {results_summary if results_summary else "暂无工作者响应"}
+                        
+                        剩余轮次: {max_rounds - round_num}
+                        
+                        作为协调员，请:
+                        1. 审查已完成的工作
+                        2. 如需要，为智能体分配下一步任务，或
+                        3. 如任务完成，整合最终结果
+                        
+                        你的协调响应:"""
                 else:
                     # Message for worker agents
                     # Find the latest coordinator message
@@ -662,22 +662,22 @@ class A2AAgentManager:
                         latest_coordination = coordinator_messages[-1]['content']
                         message_to_send = f"""第 {round_num + 1}/{max_rounds} 轮 - 任务截止：第 {max_rounds} 轮
 
-协调员指示:
-{latest_coordination}
-
-根据上述协调员的分配，完成你的具体子任务。
-只专注于分配给你的工作。
-
-你的工作成果:"""
+                        协调员指示:
+                        {latest_coordination}
+                        
+                        根据上述协调员的分配，完成你的具体子任务。
+                        只专注于分配给你的工作。
+                        
+                        你的工作成果:"""
                     else:
                         # Fallback if no coordinator message yet
                         message_to_send = f"""第 {round_num + 1}/{max_rounds} 轮 - 任务截止：第 {max_rounds} 轮
 
-主任务: {task}
-
-等待协调员分配并完成你被分配的子任务。
-
-你的工作成果:"""
+                        主任务: {task}
+                        
+                        等待协调员分配并完成你被分配的子任务。
+                        
+                        你的工作成果:"""
                 
                 # Send message to agent and wait for completion
                 try:
