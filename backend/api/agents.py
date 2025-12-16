@@ -185,6 +185,3 @@ async def collaborate_stream(collaboration: AgentCollaboration):
             "X-Accel-Buffering": "no",
         }
     )
-
-
-@router.delete("/{agent_id}")
