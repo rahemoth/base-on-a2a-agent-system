@@ -304,12 +304,18 @@ class A2AAgentManager:
             if executor:
                 executor.memory.update_environment_context(collaboration_context)
         
-        # Initial message to coordinator - emphasize actual task completion
+        # Initial message to coordinator with round awareness
         current_message = f"""Task: {task}
 
-IMPORTANT: You must COMPLETE the task, not just discuss or coordinate. Each agent should contribute actual content that directly addresses the task.
+You are the coordinator working with {len(agent_ids) - 1} other agent(s). 
 
-You are working with {len(agent_ids) - 1} other agent(s). In this round, provide YOUR ACTUAL CONTRIBUTION to completing the task (not just coordination or planning).
+IMPORTANT CONSTRAINTS:
+- You have {max_rounds} rounds total to complete this task
+- This is Round 1/{max_rounds}
+- The task MUST be completed before Round {max_rounds} ends
+- Track your progress and ensure completion within the available rounds
+
+You can coordinate, plan, and delegate work. However, remember that time is limited - balance coordination with actual progress toward task completion.
 
 Your response:"""
         
@@ -343,22 +349,22 @@ Your response:"""
                     previous_responses = "\n\n".join(relevant_messages[-3:])
                     
                     if previous_responses:
-                        message_to_send = f"""Round {round_num + 1}/{max_rounds}
+                        message_to_send = f"""Round {round_num + 1}/{max_rounds} - Remember: task must be completed by Round {max_rounds}
 
 Previous contributions:
 {previous_responses}
 
-IMPORTANT: Build upon the previous work and add YOUR ACTUAL CONTRIBUTION to the task. Do NOT just coordinate or plan - provide real content that directly progresses toward completing the task.
+Build upon the previous work. You can coordinate, delegate, or contribute directly. Ensure the task progresses toward completion within the remaining {max_rounds - round_num} rounds.
 
-Your contribution:"""
+Your response:"""
                     else:
-                        message_to_send = f"""Round {round_num + 1}/{max_rounds}
+                        message_to_send = f"""Round {round_num + 1}/{max_rounds} - Remember: task must be completed by Round {max_rounds}
 
 Task: {task}
 
-IMPORTANT: Provide your ACTUAL WORK on this task, not just thoughts or plans. Create real content that contributes to completing the task.
+You can coordinate, plan, or contribute directly. Ensure the task progresses toward completion within the remaining {max_rounds - round_num} rounds.
 
-Your contribution:"""
+Your response:"""
                 
                 # Send message to agent and wait for completion
                 try:
@@ -494,12 +500,18 @@ Your contribution:"""
             if executor:
                 executor.memory.update_environment_context(collaboration_context)
         
-        # Initial message to coordinator - emphasize actual task completion
+        # Initial message to coordinator with round awareness
         current_message = f"""Task: {task}
 
-IMPORTANT: You must COMPLETE the task, not just discuss or coordinate. Each agent should contribute actual content that directly addresses the task.
+You are the coordinator working with {len(agent_ids) - 1} other agent(s). 
 
-You are working with {len(agent_ids) - 1} other agent(s). In this round, provide YOUR ACTUAL CONTRIBUTION to completing the task (not just coordination or planning).
+IMPORTANT CONSTRAINTS:
+- You have {max_rounds} rounds total to complete this task
+- This is Round 1/{max_rounds}
+- The task MUST be completed before Round {max_rounds} ends
+- Track your progress and ensure completion within the available rounds
+
+You can coordinate, plan, and delegate work. However, remember that time is limited - balance coordination with actual progress toward task completion.
 
 Your response:"""
         
@@ -534,21 +546,21 @@ Your response:"""
                         recent_context = ""
                     
                     if recent_context:
-                        message_to_send = f"""Round {round_num + 1}/{max_rounds}
+                        message_to_send = f"""Round {round_num + 1}/{max_rounds} - Remember: task must be completed by Round {max_rounds}
 
 {recent_context}
 
-IMPORTANT: Build upon the previous work and add YOUR ACTUAL CONTRIBUTION to the task. Do NOT just coordinate or plan - provide real content that directly progresses toward completing the task.
+You can coordinate, delegate, or contribute directly. Ensure the task progresses toward completion within the remaining {max_rounds - round_num} rounds.
 
-Your contribution:"""
+Your response:"""
                     else:
-                        message_to_send = f"""Round {round_num + 1}/{max_rounds}
+                        message_to_send = f"""Round {round_num + 1}/{max_rounds} - Remember: task must be completed by Round {max_rounds}
 
 Task: {task}
 
-IMPORTANT: Provide your ACTUAL WORK on this task, not just thoughts or plans. Create real content that contributes to completing the task.
+You can coordinate, plan, or contribute directly. Ensure the task progresses toward completion within the remaining {max_rounds - round_num} rounds.
 
-Your contribution:"""
+Your response:"""
                 
                 # Send message to agent and wait for completion
                 try:
