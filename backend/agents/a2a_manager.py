@@ -304,8 +304,14 @@ class A2AAgentManager:
             if executor:
                 executor.memory.update_environment_context(collaboration_context)
         
-        # Initial message to coordinator
-        current_message = f"Task: {task}\n\nYou are coordinating a collaboration with {len(agent_ids) - 1} other agents. Please provide your initial thoughts and approach."
+        # Initial message to coordinator - emphasize actual task completion
+        current_message = f"""Task: {task}
+
+IMPORTANT: You must COMPLETE the task, not just discuss or coordinate. Each agent should contribute actual content that directly addresses the task.
+
+You are working with {len(agent_ids) - 1} other agent(s). In this round, provide YOUR ACTUAL CONTRIBUTION to completing the task (not just coordination or planning).
+
+Your response:"""
         
         # Collaboration rounds
         for round_num in range(max_rounds):
@@ -337,9 +343,22 @@ class A2AAgentManager:
                     previous_responses = "\n\n".join(relevant_messages[-3:])
                     
                     if previous_responses:
-                        message_to_send = f"Round {round_num + 1}/{max_rounds}\n\nPrevious contributions:\n{previous_responses}\n\nBased on the discussion so far, what is your contribution to the task?"
+                        message_to_send = f"""Round {round_num + 1}/{max_rounds}
+
+Previous contributions:
+{previous_responses}
+
+IMPORTANT: Build upon the previous work and add YOUR ACTUAL CONTRIBUTION to the task. Do NOT just coordinate or plan - provide real content that directly progresses toward completing the task.
+
+Your contribution:"""
                     else:
-                        message_to_send = f"Round {round_num + 1}/{max_rounds}\n\nTask: {task}\n\nPlease provide your thoughts and contribution."
+                        message_to_send = f"""Round {round_num + 1}/{max_rounds}
+
+Task: {task}
+
+IMPORTANT: Provide your ACTUAL WORK on this task, not just thoughts or plans. Create real content that contributes to completing the task.
+
+Your contribution:"""
                 
                 # Send message to agent and wait for completion
                 try:
@@ -421,6 +440,198 @@ class A2AAgentManager:
         })
         
         return collaboration_history
+    
+    async def collaborate_agents_stream(
+        self,
+        agent_ids: List[str],
+        task: str,
+        coordinator_id: Optional[str] = None,
+        max_rounds: int = 5
+    ):
+        """
+        Stream collaboration messages in real-time using async generator
+        
+        Yields messages as they are generated during collaboration
+        """
+        if not agent_ids:
+            raise ValueError("No agents specified for collaboration")
+        
+        # Validate all agents exist
+        for agent_id in agent_ids:
+            if agent_id not in self.agents:
+                raise ValueError(f"Agent {agent_id} not found")
+        
+        # Use first agent as coordinator if not specified
+        if coordinator_id:
+            if coordinator_id not in self.agents:
+                raise ValueError(f"Coordinator agent {coordinator_id} not found")
+        else:
+            coordinator_id = agent_ids[0]
+        
+        # Track task completion for each agent
+        agent_task_status = {agent_id: {"completed": False, "result": None} for agent_id in agent_ids}
+        
+        # Initialize collaboration task
+        init_msg = {
+            "role": "system",
+            "content": f"Starting collaboration on task: {task}",
+            "metadata": {},
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+        yield init_msg
+        
+        # Update environment context for all agents with collaboration info
+        collaboration_context = {
+            "in_collaboration": True,
+            "total_agents": len(agent_ids),
+            "agent_ids": agent_ids,
+            "coordinator_id": coordinator_id,
+            "task": task
+        }
+        
+        for agent_id in agent_ids:
+            executor = self.agents.get(agent_id)
+            if executor:
+                executor.memory.update_environment_context(collaboration_context)
+        
+        # Initial message to coordinator - emphasize actual task completion
+        current_message = f"""Task: {task}
+
+IMPORTANT: You must COMPLETE the task, not just discuss or coordinate. Each agent should contribute actual content that directly addresses the task.
+
+You are working with {len(agent_ids) - 1} other agent(s). In this round, provide YOUR ACTUAL CONTRIBUTION to completing the task (not just coordination or planning).
+
+Your response:"""
+        
+        # Collaboration rounds
+        for round_num in range(max_rounds):
+            logger.info(f"Collaboration round {round_num + 1}/{max_rounds}")
+            
+            # Round completion tracking
+            round_start_time = datetime.now(timezone.utc)
+            
+            # Get responses from all agents in this round
+            for idx, agent_id in enumerate(agent_ids):
+                agent_metadata = self.agent_metadata.get(agent_id)
+                if agent_metadata and "config" in agent_metadata:
+                    agent_name = agent_metadata["config"].name
+                else:
+                    agent_name = agent_id
+                
+                logger.debug(f"Processing agent {agent_name} ({idx + 1}/{len(agent_ids)})")
+                
+                # Customize message for each agent
+                if idx == 0 and round_num == 0:
+                    message_to_send = current_message
+                else:
+                    # Build context from previous responses (last 3 for context)
+                    # Note: We can't access previous messages in stream mode easily,
+                    # so we'll use agent memory
+                    if idx > 0:
+                        # Get recent agent responses from memory
+                        recent_context = "Based on previous contributions, add your work to continue the task."
+                    else:
+                        recent_context = ""
+                    
+                    if recent_context:
+                        message_to_send = f"""Round {round_num + 1}/{max_rounds}
+
+{recent_context}
+
+IMPORTANT: Build upon the previous work and add YOUR ACTUAL CONTRIBUTION to the task. Do NOT just coordinate or plan - provide real content that directly progresses toward completing the task.
+
+Your contribution:"""
+                    else:
+                        message_to_send = f"""Round {round_num + 1}/{max_rounds}
+
+Task: {task}
+
+IMPORTANT: Provide your ACTUAL WORK on this task, not just thoughts or plans. Create real content that contributes to completing the task.
+
+Your contribution:"""
+                
+                # Send message to agent and wait for completion
+                try:
+                    logger.debug(f"Sending message to agent {agent_name}")
+                    response = await self.send_message(agent_id, message_to_send)
+                    
+                    # Extract text from response using centralized utility
+                    text_response = extract_text_from_parts(response.parts)
+                    
+                    # Mark task as completed for this round
+                    agent_task_status[agent_id]["completed"] = True
+                    agent_task_status[agent_id]["result"] = text_response
+                    
+                    agent_msg = {
+                        "role": "agent",
+                        "content": f"[{agent_name}]: {text_response}",
+                        "metadata": {
+                            "agent_id": agent_id,
+                            "agent_name": agent_name,
+                            "round": round_num + 1,
+                            "completed": True
+                        },
+                        "timestamp": datetime.now(timezone.utc).isoformat()
+                    }
+                    yield agent_msg
+                    
+                    logger.debug(f"Agent {agent_name} completed task in round {round_num + 1}")
+                    
+                except Exception as e:
+                    logger.error(f"Error getting response from agent {agent_name}: {str(e)}", exc_info=True)
+                    error_msg = {
+                        "role": "agent",
+                        "content": f"[{agent_name}]: Error - {str(e)}",
+                        "metadata": {
+                            "agent_id": agent_id,
+                            "agent_name": agent_name,
+                            "round": round_num + 1,
+                            "error": True,
+                            "completed": False
+                        },
+                        "timestamp": datetime.now(timezone.utc).isoformat()
+                    }
+                    yield error_msg
+                    agent_task_status[agent_id]["completed"] = False
+            
+            # Check if all agents completed their tasks in this round
+            all_completed = all(status["completed"] for status in agent_task_status.values())
+            
+            round_duration = (datetime.now(timezone.utc) - round_start_time).total_seconds()
+            
+            round_msg = {
+                "role": "system",
+                "content": f"Round {round_num + 1} completed in {round_duration:.2f}s. All agents responded: {all_completed}",
+                "metadata": {
+                    "round": round_num + 1,
+                    "duration": round_duration,
+                    "all_completed": all_completed,
+                    "agent_status": agent_task_status.copy()
+                },
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }
+            yield round_msg
+            
+            logger.info(f"Round {round_num + 1} completed: all_agents_responded={all_completed}, duration={round_duration:.2f}s")
+            
+            # Reset completion status for next round
+            for agent_id in agent_ids:
+                agent_task_status[agent_id]["completed"] = False
+        
+        # Clear collaboration context from agents
+        for agent_id in agent_ids:
+            executor = self.agents.get(agent_id)
+            if executor:
+                executor.memory.update_environment_context({"in_collaboration": False})
+        
+        # Add final summary
+        final_msg = {
+            "role": "system",
+            "content": f"Collaboration completed after {max_rounds} rounds",
+            "metadata": {"total_rounds": max_rounds},
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+        yield final_msg
     
     async def cleanup_all(self):
         """Cleanup all agents"""
