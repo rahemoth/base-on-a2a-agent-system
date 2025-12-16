@@ -24,7 +24,6 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/agents", tags=["agents"])
 
-
 # ============================================================================
 # Legacy API Endpoints (for backward compatibility with existing frontend)
 # ============================================================================
@@ -38,7 +37,6 @@ async def create_agent(agent_create: AgentCreate):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
 @router.get("/", response_model=List[AgentResponse])
 async def list_agents():
     """List all agents"""
@@ -47,7 +45,6 @@ async def list_agents():
         return agents
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
 
 @router.get("/{agent_id}", response_model=AgentResponse)
 async def get_agent(agent_id: str):
@@ -70,7 +67,6 @@ async def get_agent(agent_id: str):
         updated_at=metadata["updated_at"]
     )
 
-
 @router.put("/{agent_id}", response_model=AgentResponse)
 async def update_agent(agent_id: str, agent_update: AgentUpdate):
     """Update agent configuration"""
@@ -83,7 +79,6 @@ async def update_agent(agent_id: str, agent_update: AgentUpdate):
     
     return agent
 
-
 @router.delete("/{agent_id}")
 async def delete_agent(agent_id: str):
     """Delete an agent"""
@@ -93,12 +88,10 @@ async def delete_agent(agent_id: str):
     
     return {"message": "Agent deleted successfully"}
 
-
 @router.post("/message")
 async def send_message(agent_message: AgentMessage):
     """Send a message to an agent (legacy endpoint)"""
-    logger.debug(f"Received message for agent {agent_message.agent_id}")
-    
+
     try:
         # Use A2A manager to send message
         response = await a2a_agent_manager.send_message(
@@ -108,9 +101,7 @@ async def send_message(agent_message: AgentMessage):
         
         # Extract text from response using centralized utility
         text_response = extract_text_from_parts(response.parts)
-        
-        logger.debug(f"Returning response to client")
-        
+
         return {"response": text_response}
     except ValueError as e:
         logger.error(f"Agent not found: {str(e)}")
@@ -118,7 +109,6 @@ async def send_message(agent_message: AgentMessage):
     except Exception as e:
         logger.error(f"Error processing message: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
-
 
 @router.post("/collaborate")
 async def collaborate(collaboration: AgentCollaboration):
@@ -138,7 +128,6 @@ async def collaborate(collaboration: AgentCollaboration):
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
 
 @router.post("/collaborate/stream")
 async def collaborate_stream(collaboration: AgentCollaboration):
@@ -201,7 +190,6 @@ async def collaborate_stream(collaboration: AgentCollaboration):
         }
     )
 
-
 # ============================================================================
 # A2A Protocol Endpoints
 # ============================================================================
@@ -214,7 +202,6 @@ async def get_agent_card(agent_id: str):
         raise HTTPException(status_code=404, detail="Agent not found")
     
     return agent_card.model_dump(exclude_none=True)
-
 
 @router.post("/{agent_id}/a2a")
 async def a2a_jsonrpc_endpoint(agent_id: str, request: Request):
@@ -276,7 +263,6 @@ async def a2a_jsonrpc_endpoint(agent_id: str, request: Request):
             )
         )
         return error_response.model_dump(exclude_none=True)
-
 
 @router.get("/{agent_id}/tasks/{task_id}")
 async def get_task(agent_id: str, task_id: str):

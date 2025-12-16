@@ -208,8 +208,6 @@ class A2AAgentManager:
         task_id: Optional[str] = None,
     ) -> types.Message:
         """Send a message to an agent and get response"""
-        logger.debug(f"Sending message to agent {agent_id}")
-        
         handler = self.request_handlers.get(agent_id)
         if not handler:
             logger.error(f"Agent {agent_id} not found")
@@ -230,9 +228,6 @@ class A2AAgentManager:
         
         # Call the handler's on_message_send method directly
         response = await handler.on_message_send(params)
-        
-        logger.debug(f"Received response from agent {agent_id}")
-        
         return response
     
     async def collaborate_agents(
@@ -285,7 +280,7 @@ class A2AAgentManager:
         # Initialize collaboration task
         collaboration_history.append({
             "role": "system",
-            "content": f"Starting collaboration on task: {task}",
+            "content": f"开始协作任务: {task}",
             "metadata": {},
             "timestamp": datetime.now(timezone.utc).isoformat()
         })
@@ -340,26 +335,26 @@ class A2AAgentManager:
                             else:
                                 agent_names.append(aid)
                         
-                        message_to_send = f"""Task: {task}
+                        message_to_send = f"""任务: {task}
 
-You are the COORDINATOR agent working with {len(agent_ids) - 1} other agent(s): {', '.join(agent_names)}.
+你是协调员智能体，与 {len(agent_ids) - 1} 个其他智能体协作: {', '.join(agent_names)}.
 
-IMPORTANT CONSTRAINTS:
-- You have {max_rounds} rounds total to complete this task
-- This is Round 1/{max_rounds}
-- The task MUST be completed before Round {max_rounds} ends
-- You need to ASSIGN specific subtasks to each agent
+重要约束:
+- 总共有 {max_rounds} 轮完成此任务
+- 当前是第 1/{max_rounds} 轮
+- 任务必须在第 {max_rounds} 轮结束前完成
+- 你需要为每个智能体分配具体的子任务
 
-YOUR ROLE AS COORDINATOR:
-1. Break down the main task into smaller subtasks
-2. Assign specific subtasks to each agent (be explicit about who does what)
-3. Coordinate the work and ensure completion within {max_rounds} rounds
+你作为协调员的职责:
+1. 将主任务分解为更小的子任务
+2. 为每个智能体分配具体的子任务（明确谁做什么）
+3. 协调工作并确保在 {max_rounds} 轮内完成
 
-Please provide:
-- Your plan for dividing the work
-- Specific assignments for each agent (e.g., "Agent A1 should...", "Agent A2 should...")
+请提供:
+- 你的工作分配计划
+- 每个智能体的具体分配（例如："智能体 A1 应该..."、"智能体 A2 应该..."）
 
-Your coordination response:"""
+你的协调响应:"""
                     else:
                         # Subsequent coordinator prompts
                         worker_results = [
@@ -374,19 +369,19 @@ Your coordination response:"""
                             for msg in worker_results
                         ])
                         
-                        message_to_send = f"""Round {round_num + 1}/{max_rounds} - Remember: task must be completed by Round {max_rounds}
+                        message_to_send = f"""第 {round_num + 1}/{max_rounds} 轮 - 注意：任务必须在第 {max_rounds} 轮前完成
 
-Worker agents have completed their assignments from Round {round_num}:
-{results_summary if results_summary else "No worker responses yet."}
+工作智能体已完成第 {round_num} 轮的分配任务:
+{results_summary if results_summary else "暂无工作者响应"}
 
-REMAINING ROUNDS: {max_rounds - round_num}
+剩余轮次: {max_rounds - round_num}
 
-As coordinator, please:
-1. Review the work completed
-2. Assign next tasks to agents if needed, OR
-3. Consolidate the final result if task is complete
+作为协调员，请:
+1. 审查已完成的工作
+2. 如需要，为智能体分配下一步任务，或
+3. 如任务完成，整合最终结果
 
-Your coordination response:"""
+你的协调响应:"""
                 else:
                     # Message for worker agents
                     # Find the latest coordinator message that might contain their assignment
@@ -398,28 +393,27 @@ Your coordination response:"""
                     
                     if coordinator_messages:
                         latest_coordination = coordinator_messages[-1]['content']
-                        message_to_send = f"""Round {round_num + 1}/{max_rounds} - Task deadline: Round {max_rounds}
+                        message_to_send = f"""第 {round_num + 1}/{max_rounds} 轮 - 任务截止：第 {max_rounds} 轮
 
-COORDINATOR'S INSTRUCTIONS:
+协调员指示:
 {latest_coordination}
 
-Based on the coordinator's assignment above, complete YOUR SPECIFIC SUBTASK.
-Focus only on what you were assigned to do.
+根据上述协调员的分配，完成你的具体子任务。
+只专注于分配给你的工作。
 
-Your work:"""
+你的工作成果:"""
                     else:
                         # Fallback if no coordinator message yet
-                        message_to_send = f"""Round {round_num + 1}/{max_rounds} - Task deadline: Round {max_rounds}
+                        message_to_send = f"""第 {round_num + 1}/{max_rounds} 轮 - 任务截止：第 {max_rounds} 轮
 
-Main Task: {task}
+主任务: {task}
 
-Wait for coordinator's assignment and complete your assigned subtask.
+等待协调员分配并完成你被分配的子任务。
 
-Your work:"""
+你的工作成果:"""
                 
                 # Send message to agent and wait for completion
                 try:
-                    logger.debug(f"Sending message to agent {agent_name}")
                     response = await self.send_message(agent_id, message_to_send)
                     
                     # Extract text from response using centralized utility
@@ -440,14 +434,11 @@ Your work:"""
                         },
                         "timestamp": datetime.now(timezone.utc).isoformat()
                     })
-                    
-                    logger.debug(f"Agent {agent_name} completed task in round {round_num + 1}")
-                    
                 except Exception as e:
-                    logger.error(f"Error getting response from agent {agent_name}: {str(e)}", exc_info=True)
+                    logger.error(f"从智能体 {agent_name} 获取响应时出错: {str(e)}", exc_info=True)
                     collaboration_history.append({
                         "role": "agent",
-                        "content": f"[{agent_name}]: Error - {str(e)}",
+                        "content": f"[{agent_name}]: 错误 - {str(e)}",
                         "metadata": {
                             "agent_id": agent_id,
                             "agent_name": agent_name,
@@ -531,7 +522,7 @@ Your work:"""
         # Initialize collaboration task
         init_msg = {
             "role": "system",
-            "content": f"Starting collaboration on task: {task}",
+            "content": f"开始协作任务: {task}",
             "metadata": {},
             "timestamp": datetime.now(timezone.utc).isoformat()
         }
@@ -587,26 +578,26 @@ Your work:"""
                             else:
                                 agent_names.append(aid)
                         
-                        message_to_send = f"""Task: {task}
+                        message_to_send = f"""任务: {task}
 
-You are the COORDINATOR agent working with {len(agent_ids) - 1} other agent(s): {', '.join(agent_names)}.
+你是协调员智能体，与 {len(agent_ids) - 1} 个其他智能体协作: {', '.join(agent_names)}.
 
-IMPORTANT CONSTRAINTS:
-- You have {max_rounds} rounds total to complete this task
-- This is Round 1/{max_rounds}
-- The task MUST be completed before Round {max_rounds} ends
-- You need to ASSIGN specific subtasks to each agent
+重要约束:
+- 总共有 {max_rounds} 轮完成此任务
+- 当前是第 1/{max_rounds} 轮
+- 任务必须在第 {max_rounds} 轮结束前完成
+- 你需要为每个智能体分配具体的子任务
 
-YOUR ROLE AS COORDINATOR:
-1. Break down the main task into smaller subtasks
-2. Assign specific subtasks to each agent (be explicit about who does what)
-3. Coordinate the work and ensure completion within {max_rounds} rounds
+你作为协调员的职责:
+1. 将主任务分解为更小的子任务
+2. 为每个智能体分配具体的子任务（明确谁做什么）
+3. 协调工作并确保在 {max_rounds} 轮内完成
 
-Please provide:
-- Your plan for dividing the work
-- Specific assignments for each agent (e.g., "Agent A1 should...", "Agent A2 should...")
+请提供:
+- 你的工作分配计划
+- 每个智能体的具体分配（例如："智能体 A1 应该..."、"智能体 A2 应该..."）
 
-Your coordination response:"""
+你的协调响应:"""
                     else:
                         # Subsequent coordinator prompts
                         worker_results = [
@@ -621,19 +612,19 @@ Your coordination response:"""
                             for msg in worker_results
                         ])
                         
-                        message_to_send = f"""Round {round_num + 1}/{max_rounds} - Remember: task must be completed by Round {max_rounds}
+                        message_to_send = f"""第 {round_num + 1}/{max_rounds} 轮 - 注意：任务必须在第 {max_rounds} 轮前完成
 
-Worker agents have completed their assignments from Round {round_num}:
-{results_summary if results_summary else "No worker responses yet."}
+工作智能体已完成第 {round_num} 轮的分配任务:
+{results_summary if results_summary else "暂无工作者响应"}
 
-REMAINING ROUNDS: {max_rounds - round_num}
+剩余轮次: {max_rounds - round_num}
 
-As coordinator, please:
-1. Review the work completed
-2. Assign next tasks to agents if needed, OR
-3. Consolidate the final result if task is complete
+作为协调员，请:
+1. 审查已完成的工作
+2. 如需要，为智能体分配下一步任务，或
+3. 如任务完成，整合最终结果
 
-Your coordination response:"""
+你的协调响应:"""
                 else:
                     # Message for worker agents
                     # Find the latest coordinator message
@@ -645,28 +636,27 @@ Your coordination response:"""
                     
                     if coordinator_messages:
                         latest_coordination = coordinator_messages[-1]['content']
-                        message_to_send = f"""Round {round_num + 1}/{max_rounds} - Task deadline: Round {max_rounds}
+                        message_to_send = f"""第 {round_num + 1}/{max_rounds} 轮 - 任务截止：第 {max_rounds} 轮
 
-COORDINATOR'S INSTRUCTIONS:
+协调员指示:
 {latest_coordination}
 
-Based on the coordinator's assignment above, complete YOUR SPECIFIC SUBTASK.
-Focus only on what you were assigned to do.
+根据上述协调员的分配，完成你的具体子任务。
+只专注于分配给你的工作。
 
-Your work:"""
+你的工作成果:"""
                     else:
                         # Fallback if no coordinator message yet
-                        message_to_send = f"""Round {round_num + 1}/{max_rounds} - Task deadline: Round {max_rounds}
+                        message_to_send = f"""第 {round_num + 1}/{max_rounds} 轮 - 任务截止：第 {max_rounds} 轮
 
-Main Task: {task}
+主任务: {task}
 
-Wait for coordinator's assignment and complete your assigned subtask.
+等待协调员分配并完成你被分配的子任务。
 
-Your work:"""
+你的工作成果:"""
                 
                 # Send message to agent and wait for completion
                 try:
-                    logger.debug(f"Sending message to agent {agent_name}")
                     response = await self.send_message(agent_id, message_to_send)
                     
                     # Extract text from response using centralized utility
@@ -689,14 +679,11 @@ Your work:"""
                     }
                     stream_history.append(agent_msg)
                     yield agent_msg
-                    
-                    logger.debug(f"Agent {agent_name} completed task in round {round_num + 1}")
-                    
                 except Exception as e:
-                    logger.error(f"Error getting response from agent {agent_name}: {str(e)}", exc_info=True)
+                    logger.error(f"从智能体 {agent_name} 获取响应时出错: {str(e)}", exc_info=True)
                     error_msg = {
                         "role": "agent",
-                        "content": f"[{agent_name}]: Error - {str(e)}",
+                        "content": f"[{agent_name}]: 错误 - {str(e)}",
                         "metadata": {
                             "agent_id": agent_id,
                             "agent_name": agent_name,

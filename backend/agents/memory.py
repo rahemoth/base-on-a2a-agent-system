@@ -11,7 +11,6 @@ import aiosqlite
 
 logger = logging.getLogger(__name__)
 
-
 class AgentMemory:
     """
     Memory system for agents with short-term and long-term storage.
@@ -117,8 +116,7 @@ class AgentMemory:
     def clear_short_term_memory(self):
         """Clear short-term memory"""
         self.short_term_memory.clear()
-        logger.debug(f"Agent {self.agent_id}: Short-term memory cleared")
-    
+
     async def add_to_long_term(
         self,
         memory_type: str,
@@ -145,9 +143,7 @@ class AgentMemory:
                 VALUES (?, ?, ?, ?, ?, ?)
             """, (self.agent_id, memory_type, content, metadata_json, importance, timestamp))
             await db.commit()
-        
-        logger.debug(f"Agent {self.agent_id}: Added to long-term memory: {memory_type}")
-    
+
     async def search_long_term_memory(
         self,
         memory_type: Optional[str] = None,
@@ -222,8 +218,7 @@ class AgentMemory:
             value: Memory value
         """
         self.working_memory[key] = value
-        logger.debug(f"Agent {self.agent_id}: Updated working memory: {key}")
-    
+
     def get_working_memory(self, key: str) -> Optional[Any]:
         """Get a value from working memory"""
         return self.working_memory.get(key)
@@ -231,8 +226,7 @@ class AgentMemory:
     def clear_working_memory(self):
         """Clear working memory"""
         self.working_memory.clear()
-        logger.debug(f"Agent {self.agent_id}: Working memory cleared")
-    
+
     def update_environment_context(self, context: Dict[str, Any]):
         """
         Update environmental context
@@ -241,8 +235,7 @@ class AgentMemory:
             context: Environmental context data
         """
         self.environment_context.update(context)
-        logger.debug(f"Agent {self.agent_id}: Updated environment context")
-    
+
     def get_environment_context(self) -> Dict[str, Any]:
         """Get current environmental context"""
         return self.environment_context.copy()
@@ -273,9 +266,7 @@ class AgentMemory:
                 VALUES (?, ?, ?, ?, ?, ?)
             """, (self.agent_id, task_id, task_description, status, timestamp, metadata_json))
             await db.commit()
-        
-        logger.debug(f"Agent {self.agent_id}: Saved task {task_id} with status {status}")
-    
+
     async def update_task(
         self,
         task_id: str,
@@ -317,9 +308,7 @@ class AgentMemory:
                 WHERE agent_id = ? AND task_id = ?
             """, params)
             await db.commit()
-        
-        logger.debug(f"Agent {self.agent_id}: Updated task {task_id}")
-    
+
     async def get_task_history(
         self,
         limit: int = 10,

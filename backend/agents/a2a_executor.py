@@ -27,7 +27,6 @@ logger = logging.getLogger(__name__)
 CONTENT_SUMMARY_LENGTH = 200  # For summarizing content in memory
 CONTENT_RESULT_LENGTH = 500   # For storing task results
 
-
 class LLMAgentExecutor(AgentExecutor):
     """
     Agent executor that integrates LLMs (Google GenAI, OpenAI) with A2A protocol.
@@ -81,15 +80,15 @@ class LLMAgentExecutor(AgentExecutor):
             # Determine base URL based on provider
             if self.config.api_base_url:
                 base_url = self.config.api_base_url
-                logger.debug(f"Agent {self.agent_id}: Using api_base_url from config: {base_url}")
+
             elif self.config.openai_base_url:
                 # Backward compatibility
                 base_url = self.config.openai_base_url
-                logger.debug(f"Agent {self.agent_id}: Using openai_base_url from config: {base_url}")
+
             elif self.config.provider == ModelProvider.OPENAI:
                 # Use official OpenAI API (no custom base URL)
                 base_url = None
-                logger.debug(f"Agent {self.agent_id}: Using official OpenAI API")
+
             else:
                 # Default URLs for each local provider
                 default_urls = {
@@ -100,8 +99,7 @@ class LLMAgentExecutor(AgentExecutor):
                     ModelProvider.CUSTOM: None
                 }
                 base_url = default_urls.get(self.config.provider)
-                logger.debug(f"Agent {self.agent_id}: Using default URL for {self.config.provider.value}: {base_url}")
-            
+
             if base_url:
                 self.openai_client = AsyncOpenAI(
                     api_key=api_key,
@@ -146,7 +144,7 @@ class LLMAgentExecutor(AgentExecutor):
         Execute agent logic for an incoming request with enhanced cognitive processing.
         This is the main entry point called by the A2A framework.
         """
-        logger.debug(f"Agent {self.agent_id}: Processing message")
+
         task_id = None
         
         try:
@@ -510,7 +508,7 @@ class LLMAgentExecutor(AgentExecutor):
                 raise RuntimeError(error_msg)
             
             result = response.choices[0].message.content
-            logger.debug(f"Agent {self.agent_id}: Received response from API")
+
             return result
         except Exception as e:
             logger.error(f"Agent {self.agent_id}: Failed to generate response: {str(e)}", exc_info=True)

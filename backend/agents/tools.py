@@ -11,7 +11,6 @@ from collections import defaultdict, Counter
 
 logger = logging.getLogger(__name__)
 
-
 class ToolExecutionTracker:
     """
     Tracks tool executions for monitoring and learning
@@ -74,9 +73,7 @@ class ToolExecutionTracker:
         total = stats["total_calls"]
         stats["avg_duration"] = (prev_avg * (total - 1) + duration) / total
         stats["last_used"] = datetime.now(timezone.utc).isoformat()
-        
-        logger.debug(f"Agent {self.agent_id}: Recorded {tool_name} execution - success={success}, duration={duration:.2f}s")
-    
+
     def get_tool_statistics(self, tool_name: Optional[str] = None) -> Dict[str, Any]:
         """
         Get statistics for a specific tool or all tools
@@ -135,7 +132,6 @@ class ToolExecutionTracker:
         
         return [(name, stats["total_calls"]) for name, stats in sorted_tools[:limit]]
 
-
 class ToolResultCache:
     """
     Caches tool execution results to avoid redundant calls
@@ -185,8 +181,7 @@ class ToolResultCache:
         if datetime.now(timezone.utc) - cached_time > timedelta(seconds=self.ttl_seconds):
             del self.cache[key]
             return None
-        
-        logger.debug(f"Cache hit for {tool_name}")
+
         return entry["result"]
     
     def set(self, tool_name: str, arguments: Dict[str, Any], result: Any):
@@ -212,14 +207,11 @@ class ToolResultCache:
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "result": result
         }
-        
-        logger.debug(f"Cached result for {tool_name}")
-    
+
     def clear(self):
         """Clear all cache entries"""
         self.cache.clear()
-        logger.debug("Cache cleared")
-    
+
     def get_cache_stats(self) -> Dict[str, Any]:
         """Get cache statistics"""
         return {
@@ -227,7 +219,6 @@ class ToolResultCache:
             "max_size": self.max_size,
             "ttl_seconds": self.ttl_seconds
         }
-
 
 class ToolCapability:
     """
@@ -269,7 +260,6 @@ class ToolCapability:
             query_lower in self.description.lower() or
             query_lower in self.category.lower()
         )
-
 
 class EnhancedToolManager:
     """

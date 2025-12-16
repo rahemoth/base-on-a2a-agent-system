@@ -9,7 +9,6 @@ from enum import Enum
 
 logger = logging.getLogger(__name__)
 
-
 class DecisionType(str, Enum):
     """Types of decisions an agent can make"""
     IMMEDIATE = "immediate"  # Direct response
@@ -18,7 +17,6 @@ class DecisionType(str, Enum):
     DELEGATE = "delegate"  # Delegate to another agent
     CLARIFY = "clarify"  # Ask for clarification
 
-
 class TaskStatus(str, Enum):
     """Task execution status"""
     PENDING = "pending"
@@ -26,7 +24,6 @@ class TaskStatus(str, Enum):
     COMPLETED = "completed"
     FAILED = "failed"
     BLOCKED = "blocked"
-
 
 class CognitiveProcessor:
     """
@@ -94,8 +91,7 @@ class CognitiveProcessor:
         perception["urgency"] = self._assess_urgency(message)
         
         self.perception_state = perception
-        logger.debug(f"Agent {self.agent_id}: Perceived environment - complexity: {perception['complexity']}, intent: {perception['intent']}")
-        
+
         return perception
     
     def reason(
@@ -166,8 +162,7 @@ class CognitiveProcessor:
         reasoning_step["conclusion"] = approach
         
         self.reasoning_chain.append(reasoning_step)
-        logger.debug(f"Agent {self.agent_id}: Completed reasoning - approach: {approach}")
-        
+
         return reasoning_step
     
     def decide(
@@ -234,9 +229,7 @@ class CognitiveProcessor:
             decision["parameters"]["response_type"] = "direct"
             decision["confidence"] = 0.85
             decision["rationale"] = "Task can be handled with immediate response"
-        
-        logger.debug(f"Agent {self.agent_id}: Made decision - type: {decision['decision_type']}, confidence: {decision['confidence']}")
-        
+
         return decision
     
     def plan_execution(
@@ -370,8 +363,7 @@ class CognitiveProcessor:
                 feedback["adjustments"].append(f"Reconsider approach: {last_reasoning['conclusion']}")
         
         self.feedback_history.append(feedback)
-        logger.debug(f"Agent {self.agent_id}: Processed feedback - success: {success}")
-        
+
         return feedback
     
     def update_plan_status(
@@ -397,9 +389,7 @@ class CognitiveProcessor:
             self.current_plan["status"] = TaskStatus.COMPLETED
         else:
             self.current_plan["status"] = TaskStatus.IN_PROGRESS
-        
-        logger.debug(f"Agent {self.agent_id}: Updated plan status - step {step_number}: {status}")
-    
+
     def get_cognitive_state(self) -> Dict[str, Any]:
         """Get current cognitive state for debugging/monitoring"""
         return {

@@ -11,7 +11,6 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/agents", tags=["agent-capabilities"])
 
-
 # ============================================================================
 # Memory API Endpoints
 # ============================================================================
@@ -28,7 +27,6 @@ async def get_short_term_memory(agent_id: str, limit: Optional[int] = None):
         return {"agent_id": agent_id, "memory": memory}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
 
 @router.get("/{agent_id}/memory/long-term")
 async def get_long_term_memory(
@@ -56,7 +54,6 @@ async def get_long_term_memory(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
 @router.get("/{agent_id}/memory/tasks")
 async def get_task_history(
     agent_id: str,
@@ -78,7 +75,6 @@ async def get_task_history(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
 @router.get("/{agent_id}/memory/environment")
 async def get_environment_context(agent_id: str):
     """Get agent's current environment context"""
@@ -92,7 +88,6 @@ async def get_environment_context(agent_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
 @router.delete("/{agent_id}/memory/short-term")
 async def clear_short_term_memory(agent_id: str):
     """Clear agent's short-term memory"""
@@ -105,7 +100,6 @@ async def clear_short_term_memory(agent_id: str):
         return {"message": "Short-term memory cleared", "agent_id": agent_id}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
 
 # ============================================================================
 # Cognitive State API Endpoints
@@ -124,7 +118,6 @@ async def get_cognitive_state(agent_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
 @router.get("/{agent_id}/cognitive/reasoning-chain")
 async def get_reasoning_chain(agent_id: str, limit: int = 5):
     """Get agent's recent reasoning chain"""
@@ -142,7 +135,6 @@ async def get_reasoning_chain(agent_id: str, limit: int = 5):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
 @router.get("/{agent_id}/cognitive/current-plan")
 async def get_current_plan(agent_id: str):
     """Get agent's current execution plan"""
@@ -155,7 +147,6 @@ async def get_current_plan(agent_id: str):
         return {"agent_id": agent_id, "current_plan": plan}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
 
 @router.get("/{agent_id}/cognitive/feedback-history")
 async def get_feedback_history(agent_id: str, limit: int = 10):
@@ -173,7 +164,6 @@ async def get_feedback_history(agent_id: str, limit: int = 10):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
 
 # ============================================================================
 # Tools API Endpoints
@@ -203,7 +193,6 @@ async def list_agent_tools(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
 @router.get("/{agent_id}/tools/categories")
 async def get_tool_categories(agent_id: str):
     """Get all tool categories available to the agent"""
@@ -224,7 +213,6 @@ async def get_tool_categories(agent_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
 @router.get("/{agent_id}/tools/statistics")
 async def get_tool_statistics(agent_id: str, tool_name: Optional[str] = None):
     """Get tool execution statistics"""
@@ -244,7 +232,6 @@ async def get_tool_statistics(agent_id: str, tool_name: Optional[str] = None):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
 
 @router.get("/{agent_id}/tools/execution-history")
 async def get_tool_execution_history(
@@ -273,7 +260,6 @@ async def get_tool_execution_history(
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
 
 @router.get("/{agent_id}/tools/report")
 async def get_tool_execution_report(agent_id: str):
