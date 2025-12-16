@@ -4,8 +4,9 @@ FastAPI routes for A2A-compliant agent management and A2A protocol endpoints
 import logging
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse, JSONResponse
-from typing import List, Optional
+from typing import List, Optional, AsyncGenerator
 import json
+import asyncio
 
 from a2a import types
 from backend.models import (
@@ -23,7 +24,6 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/agents", tags=["agents"])
 
-
 # ============================================================================
 # Legacy API Endpoints (for backward compatibility with existing frontend)
 # ============================================================================
@@ -37,7 +37,6 @@ async def create_agent(agent_create: AgentCreate):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
 @router.get("/", response_model=List[AgentResponse])
 async def list_agents():
     """List all agents"""
@@ -46,7 +45,6 @@ async def list_agents():
         return agents
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
 
 @router.get("/{agent_id}", response_model=AgentResponse)
 async def get_agent(agent_id: str):
@@ -69,7 +67,6 @@ async def get_agent(agent_id: str):
         updated_at=metadata["updated_at"]
     )
 
-
 @router.put("/{agent_id}", response_model=AgentResponse)
 async def update_agent(agent_id: str, agent_update: AgentUpdate):
     """Update agent configuration"""
@@ -82,7 +79,6 @@ async def update_agent(agent_id: str, agent_update: AgentUpdate):
     
     return agent
 
-
 @router.delete("/{agent_id}")
 async def delete_agent(agent_id: str):
     """Delete an agent"""
@@ -92,12 +88,10 @@ async def delete_agent(agent_id: str):
     
     return {"message": "Agent deleted successfully"}
 
-
 @router.post("/message")
 async def send_message(agent_message: AgentMessage):
     """Send a message to an agent (legacy endpoint)"""
-    logger.debug(f"Received message for agent {agent_message.agent_id}")
-    
+
     try:
         # Use A2A manager to send message
         response = await a2a_agent_manager.send_message(
@@ -107,9 +101,7 @@ async def send_message(agent_message: AgentMessage):
         
         # Extract text from response using centralized utility
         text_response = extract_text_from_parts(response.parts)
-        
-        logger.debug(f"Returning response to client")
-        
+
         return {"response": text_response}
     except ValueError as e:
         logger.error(f"Agent not found: {str(e)}")
@@ -117,7 +109,6 @@ async def send_message(agent_message: AgentMessage):
     except Exception as e:
         logger.error(f"Error processing message: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
-
 
 @router.post("/collaborate")
 async def collaborate(collaboration: AgentCollaboration):
@@ -138,6 +129,66 @@ async def collaborate(collaboration: AgentCollaboration):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.post("/collaborate/stream")
+async def collaborate_stream(collaboration: AgentCollaboration):
+    """Start a collaboration with real-time Server-Sent Events streaming"""
+    
+    async def event_generator() -> AsyncGenerator[str, None]:
+        """Generate Server-Sent Events for collaboration updates"""
+        try:
+            # Create an asyncio queue for messages
+            message_queue = asyncio.Queue()
+            
+            # Start collaboration in background task
+            async def run_collaboration():
+                try:
+                    async for message in a2a_agent_manager.collaborate_agents_stream(
+                        agent_ids=collaboration.agents,
+                        task=collaboration.task,
+                        coordinator_id=collaboration.coordinator_agent,
+                        max_rounds=collaboration.max_rounds
+                    ):
+                        await message_queue.put(message)
+                except Exception as e:
+                    logger.error(f"Error in collaboration stream: {str(e)}", exc_info=True)
+                    await message_queue.put({"error": str(e)})
+                finally:
+                    await message_queue.put(None)  # Signal completion
+            
+            # Start collaboration task
+            task = asyncio.create_task(run_collaboration())
+            
+            # Stream messages as they arrive
+            while True:
+                message = await message_queue.get()
+                
+                if message is None:
+                    # Collaboration completed
+                    yield f"data: {json.dumps({'type': 'complete'})}\n\n"
+                    break
+                
+                if "error" in message:
+                    yield f"data: {json.dumps({'type': 'error', 'message': message['error']})}\n\n"
+                    break
+                
+                # Send message as SSE
+                yield f"data: {json.dumps({'type': 'message', 'data': message})}\n\n"
+            
+            # Wait for task to complete
+            await task
+            
+        except Exception as e:
+            logger.error(f"Error in event generator: {str(e)}", exc_info=True)
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+    
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        }
+    )
 
 # ============================================================================
 # A2A Protocol Endpoints
@@ -151,7 +202,6 @@ async def get_agent_card(agent_id: str):
         raise HTTPException(status_code=404, detail="Agent not found")
     
     return agent_card.model_dump(exclude_none=True)
-
 
 @router.post("/{agent_id}/a2a")
 async def a2a_jsonrpc_endpoint(agent_id: str, request: Request):
@@ -213,7 +263,6 @@ async def a2a_jsonrpc_endpoint(agent_id: str, request: Request):
             )
         )
         return error_response.model_dump(exclude_none=True)
-
 
 @router.get("/{agent_id}/tasks/{task_id}")
 async def get_task(agent_id: str, task_id: str):

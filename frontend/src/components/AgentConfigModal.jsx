@@ -1,6 +1,10 @@
-import React, { useState } from 'react';
-import { X, Plus, Trash2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Plus, Trash2, Save } from 'lucide-react';
+import { storageService } from '../services/storage';
 import './AgentConfigModal.css';
+
+// Constants
+const SETTINGS_SAVE_DEBOUNCE_MS = 1000; // Debounce delay for auto-save
 
 // Supported models for each provider
 const GOOGLE_MODELS = [
@@ -46,22 +50,42 @@ const PROVIDERS = {
 };
 
 const AgentConfigModal = ({ agent, onClose, onSave }) => {
-  const [config, setConfig] = useState(agent?.config || {
-    name: '',
-    description: '',
-    provider: 'google',
-    model: 'gemini-2.0-flash-exp',
-    system_prompt: '',
-    temperature: 0.7,
-    max_tokens: null,
-    google_api_key: null,
-    openai_api_key: null,
-    api_base_url: null,
-    openai_base_url: null, // Keep for backward compatibility
-    mcp_servers: [],
-    capabilities: [],
-    metadata: {}
+  // Load saved settings from localStorage if available for editing
+  const [config, setConfig] = useState(() => {
+    if (agent?.id) {
+      const savedSettings = storageService.getAgentSettings(agent.id);
+      if (savedSettings) {
+        return savedSettings;
+      }
+    }
+    return agent?.config || {
+      name: '',
+      description: '',
+      provider: 'google',
+      model: 'gemini-2.0-flash-exp',
+      system_prompt: '',
+      temperature: 0.7,
+      max_tokens: null,
+      google_api_key: null,
+      openai_api_key: null,
+      api_base_url: null,
+      openai_base_url: null, // Keep for backward compatibility
+      mcp_servers: [],
+      capabilities: [],
+      metadata: {}
+    };
   });
+
+  // Save settings to localStorage when config changes (debounced)
+  useEffect(() => {
+    if (agent?.id && config.name) {
+      const timeoutId = setTimeout(() => {
+        storageService.saveAgentSettings(agent.id, config);
+      }, SETTINGS_SAVE_DEBOUNCE_MS);
+
+      return () => clearTimeout(timeoutId);
+    }
+  }, [config, agent?.id]);
 
   // State for custom model name input (for local providers)
   const [customModel, setCustomModel] = useState(() => {
@@ -280,12 +304,12 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
                   type="text"
                   value={config.api_base_url || ''}
                   onChange={(e) => setConfig({ ...config, api_base_url: e.target.value || null })}
-                  placeholder={providerInfo.defaultBaseUrl || 'http://localhost:8080/v1'}
+                  placeholder={providerInfo.defaultBaseUrl || 'http://localhost:8080'}
                   required
                 />
                 <small className="form-hint">
                   {providerInfo.defaultBaseUrl 
-                    ? `默认值: ${providerInfo.defaultBaseUrl}` 
+                    ? `默认值: ${providerInfo.defaultBaseUrl}请添加“/v1”`
                     : '输入您的 OpenAI 兼容 API 端点的基础 URL'}
                 </small>
               </div>

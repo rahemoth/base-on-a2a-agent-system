@@ -16,10 +16,16 @@ from openai import AsyncOpenAI
 from backend.models import AgentConfig, ModelProvider
 from backend.mcp import mcp_manager
 from backend.utils.a2a_utils import extract_text_from_parts
+from backend.agents.memory import AgentMemory
+from backend.agents.cognitive import CognitiveProcessor
+from backend.agents.tools import EnhancedToolManager
 
 # Configure logger
 logger = logging.getLogger(__name__)
 
+# Constants for content truncation
+CONTENT_SUMMARY_LENGTH = 200  # For summarizing content in memory
+CONTENT_RESULT_LENGTH = 500   # For storing task results
 
 class LLMAgentExecutor(AgentExecutor):
     """
@@ -46,6 +52,13 @@ class LLMAgentExecutor(AgentExecutor):
         self.openai_client = None
         self.mcp_client = None
         
+        # Initialize memory and cognitive systems
+        self.memory = AgentMemory(agent_id=agent_id)
+        self.cognitive = CognitiveProcessor(agent_id=agent_id, agent_name=config.name)
+        
+        # Initialize enhanced tool manager (will be fully initialized in initialize_mcp)
+        self.tool_manager = None
+        
         self._initialize_clients()
     
     def _initialize_clients(self):
@@ -67,15 +80,15 @@ class LLMAgentExecutor(AgentExecutor):
             # Determine base URL based on provider
             if self.config.api_base_url:
                 base_url = self.config.api_base_url
-                logger.debug(f"Agent {self.agent_id}: Using api_base_url from config: {base_url}")
+
             elif self.config.openai_base_url:
                 # Backward compatibility
                 base_url = self.config.openai_base_url
-                logger.debug(f"Agent {self.agent_id}: Using openai_base_url from config: {base_url}")
+
             elif self.config.provider == ModelProvider.OPENAI:
                 # Use official OpenAI API (no custom base URL)
                 base_url = None
-                logger.debug(f"Agent {self.agent_id}: Using official OpenAI API")
+
             else:
                 # Default URLs for each local provider
                 default_urls = {
@@ -86,8 +99,7 @@ class LLMAgentExecutor(AgentExecutor):
                     ModelProvider.CUSTOM: None
                 }
                 base_url = default_urls.get(self.config.provider)
-                logger.debug(f"Agent {self.agent_id}: Using default URL for {self.config.provider.value}: {base_url}")
-            
+
             if base_url:
                 self.openai_client = AsyncOpenAI(
                     api_key=api_key,
@@ -101,7 +113,11 @@ class LLMAgentExecutor(AgentExecutor):
             logger.error(f"Agent {self.agent_id}: Unsupported provider: {self.config.provider}")
     
     async def initialize_mcp(self):
-        """Initialize MCP servers if configured"""
+        """Initialize MCP servers and memory system"""
+        # Initialize memory database
+        await self.memory.initialize()
+        
+        # Initialize MCP servers if configured
         if self.config.mcp_servers:
             self.mcp_client = await mcp_manager.create_client(self.agent_id)
             for mcp_config in self.config.mcp_servers:
@@ -111,16 +127,30 @@ class LLMAgentExecutor(AgentExecutor):
                     args=mcp_config.args,
                     env=mcp_config.env
                 )
+        
+        # Initialize enhanced tool manager with MCP client
+        self.tool_manager = EnhancedToolManager(
+            agent_id=self.agent_id,
+            mcp_client=self.mcp_client
+        )
+        
+        # Discover available tools
+        await self.tool_manager.discover_tools()
+        
+        logger.info(f"Agent {self.agent_id}: Initialized with {len(self.tool_manager.tools)} tools")
     
     async def execute(self, request_context: RequestContext, event_queue: EventQueue) -> None:
         """
-        Execute agent logic for an incoming request.
+        Execute agent logic for an incoming request with enhanced cognitive processing.
         This is the main entry point called by the A2A framework.
         """
-        logger.debug(f"Agent {self.agent_id}: Processing message")
+
+        task_id = None
+        
         try:
             # Get the incoming message
             message = request_context.message
+            task_id = message.task_id or f"task_{self.agent_id}_{uuid.uuid4()}"
             
             # Extract text content from message parts
             text_content = self._extract_text_from_message(message)
@@ -136,18 +166,134 @@ class LLMAgentExecutor(AgentExecutor):
                 await event_queue.enqueue_event(error_message)
                 return
             
-            # Generate response using LLM
+            # Save to short-term memory
+            self.memory.add_to_short_term({
+                "role": "user",
+                "content": text_content,
+                "task_id": task_id
+            })
+            
+            # Save task to history
+            await self.memory.save_task(
+                task_id=task_id,
+                task_description=text_content,
+                status="started"
+            )
+            
+            # Get available tools for perception using enhanced tool manager
+            available_tools = []
+            if self.tool_manager:
+                try:
+                    all_tools = await self.tool_manager.discover_tools()
+                    available_tools = [tool.name for tool in all_tools]
+                except Exception as e:
+                    logger.warning(f"Agent {self.agent_id}: Error discovering tools: {e}")
+            
+            # Get conversation context from task
+            context_messages = []
+            if hasattr(request_context, 'task') and request_context.task:
+                for msg in request_context.task.messages:
+                    msg_text = self._extract_text_from_message(msg)
+                    if msg_text:
+                        context_messages.append({
+                            "role": "user" if msg.role == types.Role.user else "assistant",
+                            "content": msg_text
+                        })
+            
+            # 1. ENVIRONMENTAL PERCEPTION
+            perception = self.cognitive.perceive_environment(
+                message=text_content,
+                context=context_messages,
+                available_tools=available_tools,
+                collaboration_context=None  # Can be enhanced with collaboration info
+            )
+            
+            # Update environment context in memory
+            self.memory.update_environment_context({
+                "last_message": text_content,
+                "context_size": len(context_messages),
+                "available_tools": available_tools,
+                "timestamp": datetime.now().isoformat()
+            })
+            
+            # 2. REASONING
+            reasoning = self.cognitive.reason(
+                perception=perception,
+                task_goal=text_content,
+                constraints=[]
+            )
+            
+            # 3. DECISION MAKING
+            decision = self.cognitive.decide(
+                reasoning=reasoning,
+                perception=perception
+            )
+            
+            # 4. EXECUTION PLANNING
+            execution_plan = self.cognitive.plan_execution(
+                decision=decision,
+                task_description=text_content
+            )
+            
+            # Update working memory with plan
+            self.memory.update_working_memory("current_plan", execution_plan)
+            self.memory.update_working_memory("decision", decision)
+            
+            # Generate response using LLM with enhanced context
             logger.info(f"Agent {self.agent_id}: Generating response using {self.config.provider.value} with model {self.config.model}")
+            
+            # Add cognitive context to the generation
+            cognitive_context = self._build_cognitive_context(perception, reasoning, decision)
+            
             if self.config.provider == ModelProvider.GOOGLE:
-                response_text = await self._generate_google(text_content, request_context)
+                response_text = await self._generate_google(text_content, request_context, cognitive_context)
             elif self.config.provider in [ModelProvider.OPENAI, ModelProvider.LMSTUDIO, 
                                           ModelProvider.LOCALAI, ModelProvider.OLLAMA, 
                                           ModelProvider.TEXTGEN_WEBUI, ModelProvider.CUSTOM]:
-                response_text = await self._generate_openai(text_content, request_context)
+                response_text = await self._generate_openai(text_content, request_context, cognitive_context)
             else:
                 raise ValueError(f"Unsupported provider: {self.config.provider}")
             
-            logger.debug(f"Agent {self.agent_id}: Generated response ({len(response_text)} chars)")
+            
+            # 5. FEEDBACK PROCESSING
+            feedback = self.cognitive.process_feedback(
+                result=response_text,
+                expected_outcome=None,
+                success=True
+            )
+            
+            # Store response in memory
+            self.memory.add_to_short_term({
+                "role": "assistant",
+                "content": response_text,
+                "task_id": task_id
+            })
+            
+            # Save important information to long-term memory
+            await self.memory.add_to_long_term(
+                memory_type="conversation",
+                content=f"Q: {text_content[:CONTENT_SUMMARY_LENGTH]}... A: {response_text[:CONTENT_SUMMARY_LENGTH]}...",
+                metadata={
+                    "task_id": task_id,
+                    "decision_type": decision["decision_type"],
+                    "complexity": perception["complexity"]
+                },
+                importance=0.7 if perception["complexity"] == "high" else 0.5
+            )
+            
+            # Update task status
+            await self.memory.update_task(
+                task_id=task_id,
+                status="completed",
+                result=response_text[:CONTENT_RESULT_LENGTH]  # Store first 500 chars
+            )
+            
+            # Update execution plan status
+            self.cognitive.update_plan_status(
+                step_number=len(execution_plan["steps"]),
+                status="completed",
+                result="Response generated successfully"
+            )
             
             # Create and publish response message
             response_message = self._create_message(
@@ -159,8 +305,24 @@ class LLMAgentExecutor(AgentExecutor):
             await event_queue.enqueue_event(response_message)
             
         except Exception as e:
-            # Handle errors
+            # Handle errors with feedback
             logger.error(f"Agent {self.agent_id}: Error processing message: {str(e)}", exc_info=True)
+            
+            # Process failure feedback
+            self.cognitive.process_feedback(
+                result=str(e),
+                expected_outcome="Successful response generation",
+                success=False
+            )
+            
+            # Update task status if we have a task_id
+            if task_id:
+                await self.memory.update_task(
+                    task_id=task_id,
+                    status="failed",
+                    result=f"Error: {str(e)}"
+                )
+            
             error_message = self._create_message(
                 f"Error processing message: {str(e)}",
                 context_id=request_context.message.context_id,
@@ -197,7 +359,36 @@ class LLMAgentExecutor(AgentExecutor):
             task_id=task_id
         )
     
-    async def _generate_google(self, text: str, request_context: RequestContext) -> str:
+    def _build_cognitive_context(
+        self,
+        perception: Dict[str, Any],
+        reasoning: Dict[str, Any],
+        decision: Dict[str, Any]
+    ) -> str:
+        """Build cognitive context to enhance LLM generation"""
+        context_parts = []
+        
+        # Add perception insights
+        context_parts.append(f"[Internal Analysis]")
+        context_parts.append(f"Task Complexity: {perception.get('complexity', 'unknown')}")
+        context_parts.append(f"Intent: {perception.get('intent', 'unknown')}")
+        
+        # Add reasoning conclusion
+        if reasoning.get('conclusion'):
+            context_parts.append(f"Approach: {reasoning['conclusion']}")
+        
+        # Add decision rationale
+        if decision.get('rationale'):
+            context_parts.append(f"Strategy: {decision['rationale']}")
+        
+        # Add memory context
+        memory_context = self.memory.get_context_for_llm(max_messages=5)
+        if memory_context:
+            context_parts.append(f"\n{memory_context}")
+        
+        return "\n".join(context_parts)
+    
+    async def _generate_google(self, text: str, request_context: RequestContext, cognitive_context: Optional[str] = None) -> str:
         """Generate response using Google GenAI"""
         if not self.google_client:
             raise RuntimeError("Google client not initialized")
@@ -217,10 +408,14 @@ class LLMAgentExecutor(AgentExecutor):
                         parts=[genai.types.Part(text=msg_text)]
                     ))
         
-        # Add current message
+        # Add current message with cognitive context
+        message_text = text
+        if cognitive_context:
+            message_text = f"{cognitive_context}\n\nUser Message: {text}"
+        
         contents.append(genai.types.Content(
             role="user",
-            parts=[genai.types.Part(text=text)]
+            parts=[genai.types.Part(text=message_text)]
         ))
         
         # Configure generation
@@ -229,8 +424,14 @@ class LLMAgentExecutor(AgentExecutor):
         }
         if self.config.max_tokens:
             config["max_output_tokens"] = self.config.max_tokens
-        if self.config.system_prompt:
-            config["system_instruction"] = self.config.system_prompt
+        
+        # Enhance system prompt with cognitive capabilities if configured
+        system_instruction = self.config.system_prompt or ""
+        if cognitive_context and not system_instruction:
+            system_instruction = f"You are {self.config.name}. Use the internal analysis provided to enhance your response quality."
+        
+        if system_instruction:
+            config["system_instruction"] = system_instruction
         
         # Generate response
         response = await self.google_client.aio.models.generate_content(
@@ -241,7 +442,7 @@ class LLMAgentExecutor(AgentExecutor):
         
         return response.text
     
-    async def _generate_openai(self, text: str, request_context: RequestContext) -> str:
+    async def _generate_openai(self, text: str, request_context: RequestContext, cognitive_context: Optional[str] = None) -> str:
         """Generate response using OpenAI"""
         if not self.openai_client:
             logger.error(f"Agent {self.agent_id}: OpenAI client not initialized")
@@ -250,12 +451,15 @@ class LLMAgentExecutor(AgentExecutor):
         # Build messages array
         messages = []
         
-        # Add system prompt if configured
-        if self.config.system_prompt:
-            messages.append({
-                "role": "system",
-                "content": self.config.system_prompt
-            })
+        # Add enhanced system prompt if configured
+        system_prompt = self.config.system_prompt or f"You are {self.config.name}, an AI assistant."
+        if cognitive_context:
+            system_prompt += "\n\nUse the internal analysis provided to enhance your response quality and reasoning."
+        
+        messages.append({
+            "role": "system",
+            "content": system_prompt
+        })
         
         # Add context messages if available
         if hasattr(request_context, 'task') and request_context.task:
@@ -268,10 +472,14 @@ class LLMAgentExecutor(AgentExecutor):
                         "content": msg_text
                     })
         
-        # Add current message
+        # Add current message with cognitive context
+        message_content = text
+        if cognitive_context:
+            message_content = f"{cognitive_context}\n\nUser Message: {text}"
+        
         messages.append({
             "role": "user",
-            "content": text
+            "content": message_content
         })
         
         # Configure generation
@@ -285,7 +493,6 @@ class LLMAgentExecutor(AgentExecutor):
         
         # Generate response
         try:
-            logger.debug(f"Agent {self.agent_id}: Calling {self.config.provider.value} API (model: {self.config.model})")
             response = await self.openai_client.chat.completions.create(**kwargs)
             
             if not response.choices:
@@ -299,7 +506,7 @@ class LLMAgentExecutor(AgentExecutor):
                 raise RuntimeError(error_msg)
             
             result = response.choices[0].message.content
-            logger.debug(f"Agent {self.agent_id}: Received response from API")
+
             return result
         except Exception as e:
             logger.error(f"Agent {self.agent_id}: Failed to generate response: {str(e)}", exc_info=True)
@@ -309,3 +516,7 @@ class LLMAgentExecutor(AgentExecutor):
         """Cleanup resources"""
         if self.mcp_client:
             await mcp_manager.remove_client(self.agent_id)
+        
+        # Clear in-memory data (database persists)
+        self.memory.clear_short_term_memory()
+        self.memory.clear_working_memory()

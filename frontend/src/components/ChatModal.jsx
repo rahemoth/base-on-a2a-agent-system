@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Send } from 'lucide-react';
+import { X, Send, Trash2, Download } from 'lucide-react';
 import { agentService } from '../services/api';
+import { storageService } from '../services/storage';
 import './ChatModal.css';
 
 const ChatModal = ({ agent, onClose }) => {
@@ -8,6 +9,21 @@ const ChatModal = ({ agent, onClose }) => {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef(null);
+
+  // Load chat history from localStorage on mount
+  useEffect(() => {
+    const history = storageService.getChatHistory(agent.id);
+    if (history && history.length > 0) {
+      setMessages(history);
+    }
+  }, [agent.id]);
+
+  // Save chat history to localStorage whenever messages change
+  useEffect(() => {
+    if (messages.length > 0) {
+      storageService.saveChatHistory(agent.id, messages);
+    }
+  }, [messages, agent.id]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -60,6 +76,24 @@ const ChatModal = ({ agent, onClose }) => {
     }
   };
 
+  const handleClearHistory = () => {
+    if (confirm('确定要清除此对话的历史记录吗？')) {
+      setMessages([]);
+      storageService.clearChatHistory(agent.id);
+    }
+  };
+
+  const handleExportHistory = () => {
+    const dataStr = JSON.stringify(messages, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `chat_${agent.config.name}_${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="chat-modal" onClick={(e) => e.stopPropagation()}>
@@ -68,9 +102,29 @@ const ChatModal = ({ agent, onClose }) => {
             <h2>与 {agent.config.name} 聊天</h2>
             <p className="chat-subtitle">{agent.config.description}</p>
           </div>
-          <button className="btn-close" onClick={onClose}>
-            <X size={20} />
-          </button>
+          <div className="chat-header-actions">
+            {messages.length > 0 && (
+              <>
+                <button 
+                  className="btn btn-icon" 
+                  onClick={handleExportHistory}
+                  title="导出对话"
+                >
+                  <Download size={18} />
+                </button>
+                <button 
+                  className="btn btn-icon" 
+                  onClick={handleClearHistory}
+                  title="清除历史"
+                >
+                  <Trash2 size={18} />
+                </button>
+              </>
+            )}
+            <button className="btn-close" onClick={onClose}>
+              <X size={20} />
+            </button>
+          </div>
         </div>
 
         <div className="chat-messages">

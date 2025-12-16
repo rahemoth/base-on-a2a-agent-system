@@ -17,6 +17,12 @@
   border-bottom: 1px solid var(--border);
 }
 
+.chat-header-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
 .chat-header h2 {
   font-size: 1.5rem;
   font-weight: 600;

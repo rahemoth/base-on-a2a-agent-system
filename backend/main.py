@@ -9,6 +9,7 @@ import os
 
 from backend.api import mcp_router
 from backend.api.agents_a2a import router as agents_router
+from backend.api.agent_capabilities import router as capabilities_router
 from backend.config import settings
 from backend.agents.a2a_manager import a2a_agent_manager
 from backend.mcp import mcp_manager
@@ -37,10 +38,6 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-<<<<<<< Updated upstream
-    # allow_origins=settings.allowed_origins.split("*"),
-=======
->>>>>>> Stashed changes
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -48,6 +45,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(agents_router)
+app.include_router(capabilities_router)
 app.include_router(mcp_router)
 
 
