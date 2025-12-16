@@ -304,12 +304,12 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
                   type="text"
                   value={config.api_base_url || ''}
                   onChange={(e) => setConfig({ ...config, api_base_url: e.target.value || null })}
-                  placeholder={providerInfo.defaultBaseUrl || 'http://localhost:8080/v1'}
+                  placeholder={providerInfo.defaultBaseUrl || 'http://localhost:8080'}
                   required
                 />
                 <small className="form-hint">
                   {providerInfo.defaultBaseUrl 
-                    ? `默认值: ${providerInfo.defaultBaseUrl}` 
+                    ? `默认值: ${providerInfo.defaultBaseUrl}请添加“/v1”`
                     : '输入您的 OpenAI 兼容 API 端点的基础 URL'}
                 </small>
               </div>
