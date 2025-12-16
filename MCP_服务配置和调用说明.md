@@ -199,6 +199,49 @@ curl -X POST http://localhost:8000/api/agents/ \
 
 ---
 
+## ⚠️ 重要提示：确保使用正确的 npm 包名
+
+### 常见错误：使用不存在的 npm 包
+
+**❌ 错误示例**（包不存在）：
+```json
+{
+  "name": "websearch",
+  "command": "npx",
+  "args": ["@copilotkit/mcp-websearch-server"]
+}
+```
+
+`@copilotkit/mcp-websearch-server` 这个包 **不存在**！
+
+**✅ 正确配置**（使用 Brave Search）：
+```json
+{
+  "name": "brave_search",
+  "command": "npx",
+  "args": ["-y", "@modelcontextprotocol/server-brave-search"],
+  "env": {
+    "BRAVE_API_KEY": "你的API密钥"
+  }
+}
+```
+
+### 验证 npm 包是否存在
+
+```bash
+npm info @modelcontextprotocol/server-brave-search
+```
+
+### 检查 MCP 服务器连接状态
+
+使用诊断 API 检查 Agent 的 MCP 连接状态：
+
+```bash
+curl http://localhost:8000/api/mcp/agents/{agent_id}/status
+```
+
+---
+
 ## 技术实现原理（简化版）
 
 ### 代码位置：
