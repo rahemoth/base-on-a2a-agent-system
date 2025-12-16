@@ -42,17 +42,27 @@ const CustomToolModal = ({ onClose, onSave }) => {
     });
   };
 
-  const handleSave = () => {
+  const [errors, setErrors] = useState({});
+
+  const validateForm = () => {
+    const newErrors = {};
+    
     if (!toolConfig.name.trim()) {
-      alert('请输入工具名称');
-      return;
+      newErrors.name = '请输入工具名称';
     }
     if (!toolConfig.description.trim()) {
-      alert('请输入工具描述');
-      return;
+      newErrors.description = '请输入工具描述';
     }
     if (!toolConfig.implementation.trim()) {
-      alert('请输入工具实现代码');
+      newErrors.implementation = '请输入工具实现代码';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSave = () => {
+    if (!validateForm()) {
       return;
     }
 
@@ -104,7 +114,9 @@ def execute(${toolConfig.parameters.map(p => p.name).join(', ')}):
                 value={toolConfig.name}
                 onChange={(e) => setToolConfig({ ...toolConfig, name: e.target.value })}
                 placeholder="例如: calculate_sum"
+                className={errors.name ? 'error' : ''}
               />
+              {errors.name && <span className="error-message">{errors.name}</span>}
               <small className="form-hint">
                 使用小写字母和下划线，如 my_custom_tool
               </small>
@@ -117,7 +129,9 @@ def execute(${toolConfig.parameters.map(p => p.name).join(', ')}):
                 onChange={(e) => setToolConfig({ ...toolConfig, description: e.target.value })}
                 placeholder="描述这个工具的功能..."
                 rows={2}
+                className={errors.description ? 'error' : ''}
               />
+              {errors.description && <span className="error-message">{errors.description}</span>}
             </div>
 
             <div className="form-group">
@@ -226,9 +240,10 @@ def execute(${toolConfig.parameters.map(p => p.name).join(', ')}):
                 onChange={(e) => setToolConfig({ ...toolConfig, implementation: e.target.value })}
                 placeholder="输入 Python 代码实现..."
                 rows={12}
-                className="code-editor"
+                className={`code-editor ${errors.implementation ? 'error' : ''}`}
                 spellCheck={false}
               />
+              {errors.implementation && <span className="error-message">{errors.implementation}</span>}
               <small className="form-hint">
                 实现一个 execute() 函数，接收定义的参数并返回结果字典
               </small>

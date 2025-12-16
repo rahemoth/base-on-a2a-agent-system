@@ -91,22 +91,31 @@ const Dashboard = () => {
   };
 
   const handleSaveCustomTool = (toolConfig) => {
-    // Save to localStorage for now
-    // In future, this could be sent to backend
-    const customTools = storageService.exportData()?.customTools || [];
-    customTools.push({
-      ...toolConfig,
-      id: Date.now().toString(),
-      createdAt: new Date().toISOString()
-    });
-    
-    storageService.importData({
-      ...storageService.exportData(),
-      customTools
-    });
-    
-    setShowCustomToolModal(false);
-    alert('自定义工具已保存！');
+    try {
+      // Get current data
+      const currentData = storageService.exportData() || {};
+      const customTools = currentData.customTools || [];
+      
+      // Add new tool
+      customTools.push({
+        ...toolConfig,
+        id: Date.now().toString(),
+        createdAt: new Date().toISOString()
+      });
+      
+      // Save updated data
+      storageService.importData({
+        ...currentData,
+        customTools
+      });
+      
+      setShowCustomToolModal(false);
+      // TODO: Replace with toast notification
+      alert('自定义工具已保存！');
+    } catch (error) {
+      console.error('Error saving custom tool:', error);
+      alert('保存失败: ' + error.message);
+    }
   };
 
   return (
