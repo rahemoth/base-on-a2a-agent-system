@@ -1,3 +1,4 @@
+// frontend/src/components/CollaborationModal.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Play, Users } from 'lucide-react';
 import './CollaborationModal.css';
@@ -38,7 +39,7 @@ const CollaborationModal = ({ agents, onClose, onStartCollaboration }) => {
   const handleStartCollaboration = async () => {
     // Clear previous errors
     setError(null);
-    
+
     // Validation
     if (selectedAgents.length < 2) {
       setError('请至少选择 2 个 Agent 进行协作');
@@ -50,7 +51,8 @@ const CollaborationModal = ({ agents, onClose, onStartCollaboration }) => {
     }
 
     setIsRunning(true);
-    setCollaborationResult(null);
+    // 立即进入结果视图以显示“运行中”状态
+    setCollaborationResult({});
     setRealtimeMessages([]);
     setCurrentRound(0);
 
@@ -89,7 +91,7 @@ const CollaborationModal = ({ agents, onClose, onStartCollaboration }) => {
 
       while (true) {
         const { done, value } = await reader.read();
-        
+
         if (done) break;
 
         buffer += decoder.decode(value, { stream: true });
@@ -100,10 +102,10 @@ const CollaborationModal = ({ agents, onClose, onStartCollaboration }) => {
           if (line.startsWith('data: ')) {
             try {
               const data = JSON.parse(line.slice(6));
-              
+
               if (data.type === 'message') {
                 setRealtimeMessages(prev => [...prev, data.data]);
-                
+
                 // Update round number from system messages
                 if (data.data.role === 'system' && data.data.metadata?.round) {
                   setCurrentRound(data.data.metadata.round);
@@ -120,7 +122,7 @@ const CollaborationModal = ({ agents, onClose, onStartCollaboration }) => {
           }
         }
       }
-      
+
       setCollaborationResult({ collaboration_history: [] }); // Mark as completed
     } catch (error) {
       setError('启动协作失败: ' + error.message);
@@ -153,8 +155,75 @@ const CollaborationModal = ({ agents, onClose, onStartCollaboration }) => {
               {error}
             </div>
           )}
-          
-          {!collaborationResult ? (
+
+          {(isRunning || collaborationResult) ? (
+            <div className="collaboration-results">
+              {isRunning && (
+                <div className="collaboration-progress">
+                  <div className="progress-header">
+                    <h3>协作进行中...</h3>
+                    <div className="progress-info">
+                      <span>当前轮次: {currentRound} / {maxRounds}</span>
+                      <span className="waiting-indicator">⏳ 等待任务完成...</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="conversation-history">
+                {realtimeMessages.map((msg, index) => (
+                  <div
+                    key={`${msg.timestamp}-${index}`}
+                    className={`message ${msg.role.toLowerCase()} ${index === realtimeMessages.length - 1 ? 'latest' : ''}`}
+                  >
+                    <div className="message-meta">
+                      <span className="message-role">{msg.role === 'system' ? '系统' : 'Agent'}</span>
+                      {msg.metadata?.agent_name && (
+                        <span className="message-agent">{msg.metadata.agent_name}</span>
+                      )}
+                      {msg.metadata?.round && (
+                        <span className="message-round">轮次 {msg.metadata.round}</span>
+                      )}
+                      <span className="message-time">
+                        {new Date(msg.timestamp).toLocaleTimeString()}
+                      </span>
+                    </div>
+                    <div className="message-content">{msg.content}</div>
+                    {msg.metadata?.completed !== undefined && (
+                      <div className="message-status">
+                        {msg.metadata.completed ? '✓ 已完成' : '⏳ 进行中'}
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {isRunning && (
+                  <div className="message agent">
+                    <div className="typing-indicator">
+                      <span></span>
+                      <span></span>
+                      <span></span>
+                    </div>
+                  </div>
+                )}
+                <div ref={messagesEndRef} />
+              </div>
+
+              {collaborationResult && !isRunning && (
+                <div className="results-footer">
+                  <button
+                    className="btn btn-secondary"
+                    onClick={() => {
+                      setCollaborationResult(null);
+                      setRealtimeMessages([]);
+                      setCurrentRound(0);
+                    }}
+                  >
+                    开始新协作
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
             <>
               <div className="form-section">
                 <h3>选择 Agents</h3>
@@ -242,73 +311,6 @@ const CollaborationModal = ({ agents, onClose, onStartCollaboration }) => {
                 </div>
               </div>
             </>
-          ) : (
-            <div className="collaboration-results">
-              {isRunning && (
-                <div className="collaboration-progress">
-                  <div className="progress-header">
-                    <h3>协作进行中...</h3>
-                    <div className="progress-info">
-                      <span>当前轮次: {currentRound} / {maxRounds}</span>
-                      <span className="waiting-indicator">⏳ 等待任务完成...</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-              
-              <div className="conversation-history">
-                {realtimeMessages.map((msg, index) => (
-                  <div
-                    key={`${msg.timestamp}-${index}`}
-                    className={`message ${msg.role.toLowerCase()} ${index === realtimeMessages.length - 1 ? 'latest' : ''}`}
-                  >
-                    <div className="message-meta">
-                      <span className="message-role">{msg.role === 'system' ? '系统' : 'Agent'}</span>
-                      {msg.metadata?.agent_name && (
-                        <span className="message-agent">{msg.metadata.agent_name}</span>
-                      )}
-                      {msg.metadata?.round && (
-                        <span className="message-round">轮次 {msg.metadata.round}</span>
-                      )}
-                      <span className="message-time">
-                        {new Date(msg.timestamp).toLocaleTimeString()}
-                      </span>
-                    </div>
-                    <div className="message-content">{msg.content}</div>
-                    {msg.metadata?.completed !== undefined && (
-                      <div className="message-status">
-                        {msg.metadata.completed ? '✓ 已完成' : '⏳ 进行中'}
-                      </div>
-                    )}
-                  </div>
-                ))}
-                {isRunning && (
-                  <div className="message agent">
-                    <div className="typing-indicator">
-                      <span></span>
-                      <span></span>
-                      <span></span>
-                    </div>
-                  </div>
-                )}
-                <div ref={messagesEndRef} />
-              </div>
-              
-              {collaborationResult && !isRunning && (
-                <div className="results-footer">
-                  <button
-                    className="btn btn-secondary"
-                    onClick={() => {
-                      setCollaborationResult(null);
-                      setRealtimeMessages([]);
-                      setCurrentRound(0);
-                    }}
-                  >
-                    开始新协作
-                  </button>
-                </div>
-              )}
-            </div>
           )}
         </div>
 
