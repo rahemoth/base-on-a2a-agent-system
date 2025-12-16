@@ -92,23 +92,7 @@ const Dashboard = () => {
 
   const handleSaveCustomTool = (toolConfig) => {
     try {
-      // Get current data
-      const currentData = storageService.exportData() || {};
-      const customTools = currentData.customTools || [];
-      
-      // Add new tool
-      customTools.push({
-        ...toolConfig,
-        id: Date.now().toString(),
-        createdAt: new Date().toISOString()
-      });
-      
-      // Save updated data
-      storageService.importData({
-        ...currentData,
-        customTools
-      });
-      
+      storageService.saveCustomTool(toolConfig);
       setShowCustomToolModal(false);
       // TODO: Replace with toast notification
       alert('自定义工具已保存！');

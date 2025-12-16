@@ -2,6 +2,7 @@
 const STORAGE_KEYS = {
   CHAT_HISTORY: 'a2a_chat_history',
   AGENT_SETTINGS: 'a2a_agent_settings',
+  CUSTOM_TOOLS: 'a2a_custom_tools',
 };
 
 export const storageService = {
@@ -87,12 +88,52 @@ export const storageService = {
     }
   },
 
+  // Custom Tools Management
+  getCustomTools() {
+    try {
+      return JSON.parse(localStorage.getItem(STORAGE_KEYS.CUSTOM_TOOLS) || '[]');
+    } catch (error) {
+      console.error('Error loading custom tools:', error);
+      return [];
+    }
+  },
+
+  saveCustomTool(toolConfig) {
+    try {
+      const tools = this.getCustomTools();
+      const newTool = {
+        ...toolConfig,
+        id: Date.now().toString(),
+        createdAt: new Date().toISOString(),
+        is_builtin: false,
+        category: toolConfig.category || 'custom',
+      };
+      tools.push(newTool);
+      localStorage.setItem(STORAGE_KEYS.CUSTOM_TOOLS, JSON.stringify(tools));
+      return newTool;
+    } catch (error) {
+      console.error('Error saving custom tool:', error);
+      throw error;
+    }
+  },
+
+  deleteCustomTool(toolId) {
+    try {
+      const tools = this.getCustomTools();
+      const filtered = tools.filter(t => t.id !== toolId);
+      localStorage.setItem(STORAGE_KEYS.CUSTOM_TOOLS, JSON.stringify(filtered));
+    } catch (error) {
+      console.error('Error deleting custom tool:', error);
+    }
+  },
+
   // Export/Import functionality
   exportData() {
     try {
       return {
         chatHistory: JSON.parse(localStorage.getItem(STORAGE_KEYS.CHAT_HISTORY) || '{}'),
         agentSettings: JSON.parse(localStorage.getItem(STORAGE_KEYS.AGENT_SETTINGS) || '{}'),
+        customTools: JSON.parse(localStorage.getItem(STORAGE_KEYS.CUSTOM_TOOLS) || '[]'),
         exportDate: new Date().toISOString(),
       };
     } catch (error) {
@@ -108,6 +149,9 @@ export const storageService = {
       }
       if (data.agentSettings) {
         localStorage.setItem(STORAGE_KEYS.AGENT_SETTINGS, JSON.stringify(data.agentSettings));
+      }
+      if (data.customTools) {
+        localStorage.setItem(STORAGE_KEYS.CUSTOM_TOOLS, JSON.stringify(data.customTools));
       }
       return true;
     } catch (error) {

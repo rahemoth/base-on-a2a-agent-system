@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Brain, Database, Wrench, Clock, TrendingUp, BarChart3, Target, MessageSquare, AlertCircle } from 'lucide-react';
 import { memoryService, cognitiveService, toolsService } from '../services/api';
+import { storageService } from '../services/storage';
 import './AgentInsightsModal.css';
 
 const AgentInsightsModal = ({ agent, onClose }) => {
@@ -60,7 +61,13 @@ const AgentInsightsModal = ({ agent, onClose }) => {
           toolsService.listTools(agent.id),
           toolsService.getToolReport(agent.id),
         ]);
-        setTools(toolsList.tools || []);
+        
+        // Merge backend tools with custom tools from localStorage
+        const backendTools = toolsList.tools || [];
+        const customTools = storageService.getCustomTools();
+        const allTools = [...backendTools, ...customTools];
+        
+        setTools(allTools);
         setToolReport(report.report || {});
       }
     } catch (err) {
@@ -324,8 +331,8 @@ const AgentInsightsModal = ({ agent, onClose }) => {
               <div key={idx} className="tool-card">
                 <div className="tool-header">
                   <strong>{tool.name}</strong>
-                  <span className={`tool-badge ${tool.is_builtin ? 'builtin' : 'mcp'}`}>
-                    {tool.is_builtin ? '内置' : 'MCP'}
+                  <span className={`tool-badge ${tool.category === 'custom' ? 'custom' : tool.is_builtin ? 'builtin' : 'mcp'}`}>
+                    {tool.category === 'custom' ? '自定义' : tool.is_builtin ? '内置' : 'MCP'}
                   </span>
                 </div>
                 <div className="tool-description">{tool.description}</div>
