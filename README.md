@@ -297,6 +297,8 @@ ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
 
 系统支持完整的 MCP (Model Context Protocol) 集成。可以将agent连接到 MCP 服务器以提供工具和资源。
 
+> 📚 **详细指南**：查看 [MCP 集成指南（中文）](docs/MCP_GUIDE_CN.md) 了解完整的配置说明和 Agent 调用原理。
+
 ### 示例 MCP 服务器配置
 
 ```json
@@ -316,6 +318,8 @@ ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
 - **sqlite**：SQLite 数据库访问
 - **brave-search**：网页搜索功能
 - 以及 MCP 生态中的更多服务器
+
+更多配置示例和技术实现细节，请参阅 [MCP_GUIDE_CN.md](docs/MCP_GUIDE_CN.md)
 
 ## 开发
 
