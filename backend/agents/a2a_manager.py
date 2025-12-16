@@ -334,8 +334,8 @@ class A2AAgentManager:
                                 agent_desc = f"- {config.name}"
                                 if config.description:
                                     agent_desc += f": {config.description}"
-                                if config.system_message:
-                                    agent_desc += f"\n  系统提示: {config.system_message}"
+                                if config.system_prompt:
+                                    agent_desc += f"\n  系统提示: {config.system_prompt}"
                                 agent_info_list.append(agent_desc)
                             else:
                                 agent_info_list.append(f"- {aid}")
@@ -589,8 +589,8 @@ class A2AAgentManager:
                                 agent_desc = f"- {config.name}"
                                 if config.description:
                                     agent_desc += f": {config.description}"
-                                if config.system_message:
-                                    agent_desc += f"\n  系统提示: {config.system_message}"
+                                if config.system_prompt:
+                                    agent_desc += f"\n  系统提示: {config.system_prompt}"
                                 agent_info_list.append(agent_desc)
                             else:
                                 agent_info_list.append(f"- {aid}")
