@@ -304,20 +304,8 @@ class A2AAgentManager:
             if executor:
                 executor.memory.update_environment_context(collaboration_context)
         
-        # Initial message to coordinator with round awareness
-        current_message = f"""Task: {task}
-
-You are the coordinator working with {len(agent_ids) - 1} other agent(s). 
-
-IMPORTANT CONSTRAINTS:
-- You have {max_rounds} rounds total to complete this task
-- This is Round 1/{max_rounds}
-- The task MUST be completed before Round {max_rounds} ends
-- Track your progress and ensure completion within the available rounds
-
-You can coordinate, plan, and delegate work. However, remember that time is limited - balance coordination with actual progress toward task completion.
-
-Your response:"""
+        # Track coordinator's task assignments
+        coordinator_assignments = {}
         
         # Collaboration rounds
         for round_num in range(max_rounds):
@@ -336,35 +324,98 @@ Your response:"""
                 
                 logger.debug(f"Processing agent {agent_name} ({idx + 1}/{len(agent_ids)})")
                 
-                # Customize message for each agent
-                if idx == 0 and round_num == 0:
-                    message_to_send = current_message
-                else:
-                    # Build context from previous responses (last 3 for context)
-                    relevant_messages = [
-                        f"{msg['metadata'].get('agent_name', 'Unknown')}: {msg['content']}"
-                        for msg in collaboration_history
-                        if msg['role'] == 'agent' and msg.get('metadata', {}).get('agent_id') != agent_id
-                    ]
-                    previous_responses = "\n\n".join(relevant_messages[-3:])
-                    
-                    if previous_responses:
-                        message_to_send = f"""Round {round_num + 1}/{max_rounds} - Remember: task must be completed by Round {max_rounds}
+                is_coordinator = (agent_id == coordinator_id)
+                
+                # Customize message based on role (coordinator vs worker)
+                if is_coordinator:
+                    # Message for coordinator
+                    if round_num == 0:
+                        # Initial coordinator prompt
+                        other_agents = [aid for aid in agent_ids if aid != coordinator_id]
+                        agent_names = []
+                        for aid in other_agents:
+                            meta = self.agent_metadata.get(aid)
+                            if meta and "config" in meta:
+                                agent_names.append(meta["config"].name)
+                            else:
+                                agent_names.append(aid)
+                        
+                        message_to_send = f"""Task: {task}
 
-Previous contributions:
-{previous_responses}
+You are the COORDINATOR agent working with {len(agent_ids) - 1} other agent(s): {', '.join(agent_names)}.
 
-Build upon the previous work. You can coordinate, delegate, or contribute directly. Ensure the task progresses toward completion within the remaining {max_rounds - round_num} rounds.
+IMPORTANT CONSTRAINTS:
+- You have {max_rounds} rounds total to complete this task
+- This is Round 1/{max_rounds}
+- The task MUST be completed before Round {max_rounds} ends
+- You need to ASSIGN specific subtasks to each agent
 
-Your response:"""
+YOUR ROLE AS COORDINATOR:
+1. Break down the main task into smaller subtasks
+2. Assign specific subtasks to each agent (be explicit about who does what)
+3. Coordinate the work and ensure completion within {max_rounds} rounds
+
+Please provide:
+- Your plan for dividing the work
+- Specific assignments for each agent (e.g., "Agent A1 should...", "Agent A2 should...")
+
+Your coordination response:"""
                     else:
+                        # Subsequent coordinator prompts
+                        worker_results = [
+                            msg for msg in collaboration_history
+                            if msg['role'] == 'agent' 
+                            and msg.get('metadata', {}).get('round') == round_num
+                            and msg.get('metadata', {}).get('agent_id') != coordinator_id
+                        ]
+                        
+                        results_summary = "\n\n".join([
+                            f"{msg['metadata'].get('agent_name', 'Unknown')}: {msg['content']}"
+                            for msg in worker_results
+                        ])
+                        
                         message_to_send = f"""Round {round_num + 1}/{max_rounds} - Remember: task must be completed by Round {max_rounds}
 
-Task: {task}
+Worker agents have completed their assignments from Round {round_num}:
+{results_summary if results_summary else "No worker responses yet."}
 
-You can coordinate, plan, or contribute directly. Ensure the task progresses toward completion within the remaining {max_rounds - round_num} rounds.
+REMAINING ROUNDS: {max_rounds - round_num}
 
-Your response:"""
+As coordinator, please:
+1. Review the work completed
+2. Assign next tasks to agents if needed, OR
+3. Consolidate the final result if task is complete
+
+Your coordination response:"""
+                else:
+                    # Message for worker agents
+                    # Find the latest coordinator message that might contain their assignment
+                    coordinator_messages = [
+                        msg for msg in collaboration_history
+                        if msg['role'] == 'agent'
+                        and msg.get('metadata', {}).get('agent_id') == coordinator_id
+                    ]
+                    
+                    if coordinator_messages:
+                        latest_coordination = coordinator_messages[-1]['content']
+                        message_to_send = f"""Round {round_num + 1}/{max_rounds} - Task deadline: Round {max_rounds}
+
+COORDINATOR'S INSTRUCTIONS:
+{latest_coordination}
+
+Based on the coordinator's assignment above, complete YOUR SPECIFIC SUBTASK.
+Focus only on what you were assigned to do.
+
+Your work:"""
+                    else:
+                        # Fallback if no coordinator message yet
+                        message_to_send = f"""Round {round_num + 1}/{max_rounds} - Task deadline: Round {max_rounds}
+
+Main Task: {task}
+
+Wait for coordinator's assignment and complete your assigned subtask.
+
+Your work:"""
                 
                 # Send message to agent and wait for completion
                 try:
@@ -500,20 +551,8 @@ Your response:"""
             if executor:
                 executor.memory.update_environment_context(collaboration_context)
         
-        # Initial message to coordinator with round awareness
-        current_message = f"""Task: {task}
-
-You are the coordinator working with {len(agent_ids) - 1} other agent(s). 
-
-IMPORTANT CONSTRAINTS:
-- You have {max_rounds} rounds total to complete this task
-- This is Round 1/{max_rounds}
-- The task MUST be completed before Round {max_rounds} ends
-- Track your progress and ensure completion within the available rounds
-
-You can coordinate, plan, and delegate work. However, remember that time is limited - balance coordination with actual progress toward task completion.
-
-Your response:"""
+        # Track messages for streaming mode
+        stream_history = []
         
         # Collaboration rounds
         for round_num in range(max_rounds):
@@ -532,35 +571,98 @@ Your response:"""
                 
                 logger.debug(f"Processing agent {agent_name} ({idx + 1}/{len(agent_ids)})")
                 
-                # Customize message for each agent
-                if idx == 0 and round_num == 0:
-                    message_to_send = current_message
+                is_coordinator = (agent_id == coordinator_id)
+                
+                # Customize message based on role (coordinator vs worker)
+                if is_coordinator:
+                    # Message for coordinator
+                    if round_num == 0:
+                        # Initial coordinator prompt
+                        other_agents = [aid for aid in agent_ids if aid != coordinator_id]
+                        agent_names = []
+                        for aid in other_agents:
+                            meta = self.agent_metadata.get(aid)
+                            if meta and "config" in meta:
+                                agent_names.append(meta["config"].name)
+                            else:
+                                agent_names.append(aid)
+                        
+                        message_to_send = f"""Task: {task}
+
+You are the COORDINATOR agent working with {len(agent_ids) - 1} other agent(s): {', '.join(agent_names)}.
+
+IMPORTANT CONSTRAINTS:
+- You have {max_rounds} rounds total to complete this task
+- This is Round 1/{max_rounds}
+- The task MUST be completed before Round {max_rounds} ends
+- You need to ASSIGN specific subtasks to each agent
+
+YOUR ROLE AS COORDINATOR:
+1. Break down the main task into smaller subtasks
+2. Assign specific subtasks to each agent (be explicit about who does what)
+3. Coordinate the work and ensure completion within {max_rounds} rounds
+
+Please provide:
+- Your plan for dividing the work
+- Specific assignments for each agent (e.g., "Agent A1 should...", "Agent A2 should...")
+
+Your coordination response:"""
+                    else:
+                        # Subsequent coordinator prompts
+                        worker_results = [
+                            msg for msg in stream_history
+                            if msg['role'] == 'agent' 
+                            and msg.get('metadata', {}).get('round') == round_num
+                            and msg.get('metadata', {}).get('agent_id') != coordinator_id
+                        ]
+                        
+                        results_summary = "\n\n".join([
+                            f"{msg['metadata'].get('agent_name', 'Unknown')}: {msg['content']}"
+                            for msg in worker_results
+                        ])
+                        
+                        message_to_send = f"""Round {round_num + 1}/{max_rounds} - Remember: task must be completed by Round {max_rounds}
+
+Worker agents have completed their assignments from Round {round_num}:
+{results_summary if results_summary else "No worker responses yet."}
+
+REMAINING ROUNDS: {max_rounds - round_num}
+
+As coordinator, please:
+1. Review the work completed
+2. Assign next tasks to agents if needed, OR
+3. Consolidate the final result if task is complete
+
+Your coordination response:"""
                 else:
-                    # Build context from previous responses (last 3 for context)
-                    # Note: We can't access previous messages in stream mode easily,
-                    # so we'll use agent memory
-                    if idx > 0:
-                        # Get recent agent responses from memory
-                        recent_context = "Based on previous contributions, add your work to continue the task."
-                    else:
-                        recent_context = ""
+                    # Message for worker agents
+                    # Find the latest coordinator message
+                    coordinator_messages = [
+                        msg for msg in stream_history
+                        if msg['role'] == 'agent'
+                        and msg.get('metadata', {}).get('agent_id') == coordinator_id
+                    ]
                     
-                    if recent_context:
-                        message_to_send = f"""Round {round_num + 1}/{max_rounds} - Remember: task must be completed by Round {max_rounds}
+                    if coordinator_messages:
+                        latest_coordination = coordinator_messages[-1]['content']
+                        message_to_send = f"""Round {round_num + 1}/{max_rounds} - Task deadline: Round {max_rounds}
 
-{recent_context}
+COORDINATOR'S INSTRUCTIONS:
+{latest_coordination}
 
-You can coordinate, delegate, or contribute directly. Ensure the task progresses toward completion within the remaining {max_rounds - round_num} rounds.
+Based on the coordinator's assignment above, complete YOUR SPECIFIC SUBTASK.
+Focus only on what you were assigned to do.
 
-Your response:"""
+Your work:"""
                     else:
-                        message_to_send = f"""Round {round_num + 1}/{max_rounds} - Remember: task must be completed by Round {max_rounds}
+                        # Fallback if no coordinator message yet
+                        message_to_send = f"""Round {round_num + 1}/{max_rounds} - Task deadline: Round {max_rounds}
 
-Task: {task}
+Main Task: {task}
 
-You can coordinate, plan, or contribute directly. Ensure the task progresses toward completion within the remaining {max_rounds - round_num} rounds.
+Wait for coordinator's assignment and complete your assigned subtask.
 
-Your response:"""
+Your work:"""
                 
                 # Send message to agent and wait for completion
                 try:
@@ -585,6 +687,7 @@ Your response:"""
                         },
                         "timestamp": datetime.now(timezone.utc).isoformat()
                     }
+                    stream_history.append(agent_msg)
                     yield agent_msg
                     
                     logger.debug(f"Agent {agent_name} completed task in round {round_num + 1}")
@@ -603,6 +706,7 @@ Your response:"""
                         },
                         "timestamp": datetime.now(timezone.utc).isoformat()
                     }
+                    stream_history.append(error_msg)
                     yield error_msg
                     agent_task_status[agent_id]["completed"] = False
             
