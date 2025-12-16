@@ -761,6 +761,94 @@ curl -H "Authorization: token YOUR_TOKEN" https://api.github.com/user
 curl -H "X-Subscription-Token: YOUR_KEY" "https://api.search.brave.com/res/v1/web/search?q=test"
 ```
 
+### 问题 6：npm 包不存在
+
+**症状**：配置了 MCP 服务器但无法连接，后端日志显示 npm 错误
+
+**常见原因**：
+
+1. **使用了不存在的 npm 包名**
+
+例如，`@copilotkit/mcp-websearch-server` 这个包 **不存在**。
+
+❌ **错误配置**：
+```json
+{
+  "name": "websearch",
+  "command": "npx",
+  "args": ["@copilotkit/mcp-websearch-server"]
+}
+```
+
+✅ **正确配置**（使用 Brave Search）：
+```json
+{
+  "name": "brave_search",
+  "command": "npx",
+  "args": ["-y", "@modelcontextprotocol/server-brave-search"],
+  "env": {
+    "BRAVE_API_KEY": "你的API密钥"
+  }
+}
+```
+
+2. **验证 npm 包是否存在**
+
+```bash
+npm info @modelcontextprotocol/server-brave-search
+```
+
+如果包存在，会显示包信息；如果不存在，会显示 404 错误。
+
+3. **缺少 -y 参数**
+
+使用 npx 时必须添加 `-y` 参数来自动确认安装：
+
+❌ `"args": ["@modelcontextprotocol/server-brave-search"]`
+
+✅ `"args": ["-y", "@modelcontextprotocol/server-brave-search"]`
+
+**可用的网络搜索 MCP 服务器**：
+
+| 包名 | 描述 | 需要 API 密钥 |
+|------|------|--------------|
+| `@modelcontextprotocol/server-brave-search` | Brave Search | 是 (BRAVE_API_KEY) |
+| `@modelcontextprotocol/server-puppeteer` | 网页抓取/浏览器自动化 | 否 |
+
+### 问题 7：使用诊断 API 检查 MCP 状态
+
+您可以使用诊断 API 来检查 Agent 的 MCP 服务器连接状态：
+
+```bash
+curl http://localhost:8000/api/mcp/agents/{agent_id}/status
+```
+
+**返回示例**（正常状态）：
+```json
+{
+  "status": "ok",
+  "message": "Agent has 1 MCP server(s) connected with 3 tool(s) available.",
+  "connected_servers": [
+    {
+      "name": "brave_search",
+      "status": "connected",
+      "tools_count": 3
+    }
+  ],
+  "tools_available": 3
+}
+```
+
+**返回示例**（无连接）：
+```json
+{
+  "status": "no_client",
+  "message": "No MCP client found for this agent. The agent may not have any MCP servers configured, or the agent hasn't been initialized yet.",
+  "connected_servers": [],
+  "tools_available": 0
+}
+```
+
 ---
 
 ## 总结

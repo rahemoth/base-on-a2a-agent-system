@@ -388,6 +388,44 @@ class LLMAgentExecutor(AgentExecutor):
         
         return "\n".join(context_parts)
     
+    def _build_tools_description(self) -> str:
+        """Build a description of available MCP tools for the system prompt
+        
+        This ensures the LLM knows what tools are available and how to use them.
+        """
+        if not self.tool_manager or not self.tool_manager.tools:
+            return ""
+        
+        tools_info = []
+        tools_info.append("\n[Available MCP Tools]")
+        tools_info.append("You have access to the following tools through MCP (Model Context Protocol):")
+        
+        # Group tools by server/category, excluding built-in tools
+        tools_by_category = {}
+        for tool_name, tool in self.tool_manager.tools.items():
+            # Skip built-in tools - only show MCP tools
+            if tool.is_builtin:
+                continue
+            category = tool.category
+            if category not in tools_by_category:
+                tools_by_category[category] = []
+            tools_by_category[category].append(tool)
+        
+        # If no MCP tools available, return empty
+        if not tools_by_category:
+            return ""
+        
+        for category, tools in tools_by_category.items():
+            tools_info.append(f"\n### {category} tools:")
+            for tool in tools:
+                desc = tool.description or "No description"
+                tools_info.append(f"  - {tool.name}: {desc}")
+        
+        tools_info.append("\nWhen the user asks for something that requires these tools, describe what you would do with them.")
+        tools_info.append("Note: Tool execution is handled automatically by the system when appropriate.")
+        
+        return "\n".join(tools_info)
+    
     async def _generate_google(self, text: str, request_context: RequestContext, cognitive_context: Optional[str] = None) -> str:
         """Generate response using Google GenAI"""
         if not self.google_client:
@@ -425,10 +463,16 @@ class LLMAgentExecutor(AgentExecutor):
         if self.config.max_tokens:
             config["max_output_tokens"] = self.config.max_tokens
         
-        # Enhance system prompt with cognitive capabilities if configured
-        system_instruction = self.config.system_prompt or ""
-        if cognitive_context and not system_instruction:
-            system_instruction = f"You are {self.config.name}. Use the internal analysis provided to enhance your response quality."
+        # Enhance system prompt with cognitive capabilities and MCP tools if configured
+        system_instruction = self.config.system_prompt or f"You are {self.config.name}."
+        
+        # Add available MCP tools information to system instruction
+        tools_description = self._build_tools_description()
+        if tools_description:
+            system_instruction += tools_description
+        
+        if cognitive_context:
+            system_instruction += "\n\nUse the internal analysis provided to enhance your response quality."
         
         if system_instruction:
             config["system_instruction"] = system_instruction
@@ -453,6 +497,12 @@ class LLMAgentExecutor(AgentExecutor):
         
         # Add enhanced system prompt if configured
         system_prompt = self.config.system_prompt or f"You are {self.config.name}, an AI assistant."
+        
+        # Add available MCP tools information to system prompt
+        tools_description = self._build_tools_description()
+        if tools_description:
+            system_prompt += tools_description
+        
         if cognitive_context:
             system_prompt += "\n\nUse the internal analysis provided to enhance your response quality and reasoning."
         
