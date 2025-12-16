@@ -121,7 +121,11 @@
   margin-bottom: 0.5rem;
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
+}
+
+.mcp-server-details {
+  flex: 1;
 }
 
 .server-command {
@@ -131,18 +135,40 @@
   margin-top: 0.25rem;
 }
 
+.server-args,
+.server-env {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  margin-top: 0.25rem;
+  font-style: italic;
+}
+
 .add-mcp-server {
   background: var(--background);
   padding: 1rem;
   border-radius: 8px;
-  display: flex;
-  gap: 0.5rem;
-  align-items: flex-end;
+  margin-top: 0.5rem;
 }
 
 .add-mcp-server .form-group {
-  flex: 1;
-  margin-bottom: 0;
+  margin-bottom: 1rem;
+}
+
+.form-help-text {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-top: 0.25rem;
+  font-style: italic;
+}
+
+.form-help-text a {
+  color: var(--primary);
+  text-decoration: none;
+}
+
+.form-help-text a:hover {
+  text-decoration: underline;
 }
 
 .modal-footer {

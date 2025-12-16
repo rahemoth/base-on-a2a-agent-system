@@ -58,14 +58,27 @@ Model Context Protocol (MCP) 是一个开放协议，使 AI 应用能够安全�
 
 ### 在前端界面配置
 
-1. 在创建或编辑 Agent 时，找到 "MCP Servers" 部分
-2. 点击 "Add MCP Server" 按钮
+1. 在创建或编辑 Agent 时，找到 "MCP 服务器" 部分
+2. 点击 "添加 MCP 服务器" 按钮
 3. 填写以下信息：
-   - **Server Name**：服务器名称（如 `filesystem`、`github` 等）
-   - **Command**：命令（如 `npx`、`python`）
-   - **Arguments**：参数列表，每行一个参数
-   - **Environment Variables**：环境变量键值对
-4. 点击 "Save" 保存配置
+   - **服务器名称**：服务器的唯一标识（如 `filesystem`、`github`、`brave_search` 等）
+   - **命令**：启动服务器的命令（如 `npx`、`python`、`node` 等）
+   - **参数**：命令的参数列表，每行一个参数（例如 `-y` 和 `@modelcontextprotocol/server-filesystem` 各占一行）
+   - **环境变量**：使用 `KEY=VALUE` 格式，每行一个（用于传递 API 密钥等敏感信息）
+4. 点击 "添加 MCP 服务器" 保存配置
+
+**配置示例**（以网络搜索为例）：
+- 服务器名称: `brave_search`
+- 命令: `npx`
+- 参数（每行一个）:
+  ```
+  -y
+  @modelcontextprotocol/server-brave-search
+  ```
+- 环境变量（每行一个）:
+  ```
+  BRAVE_API_KEY=你的_api_key
+  ```
 
 ### 通过 API 配置
 
@@ -129,6 +142,21 @@ Agent 回复: "根据最新的搜索结果，量子计算领域有以下重要�
 ```
 
 ### 查看可用工具
+
+#### 在聊天界面中查看
+
+当您与 Agent 聊天时，可以点击聊天窗口右上角的 **工具图标** (🔧) 来查看该 Agent 可用的所有工具：
+
+1. 打开与 Agent 的聊天窗口
+2. 点击右上角的工具图标
+3. 工具面板将显示：
+   - 所有 MCP 服务器及其提供的工具
+   - 内置工具列表
+   - 每个工具的名称和描述
+
+**Agent 会自动知道这些工具的存在**：在对话开始时，Agent 会收到一条系统消息，告知其可用的工具列表，使其能够智能地选择和使用合适的工具。
+
+#### 通过 API 查看
 
 使用 API 查看 Agent 的可用工具：
 

@@ -105,6 +105,10 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
     env: {}
   });
 
+  // State for MCP server args and env input (text format)
+  const [mcpArgsText, setMcpArgsText] = useState('');
+  const [mcpEnvText, setMcpEnvText] = useState('');
+
   // Track if mouse was pressed on overlay for proper drag handling
   const overlayClickStarted = React.useRef(false);
 
@@ -115,11 +119,37 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
 
   const addMcpServer = () => {
     if (newMcpServer.name && newMcpServer.command) {
+      // Parse args from text (one per line)
+      const args = mcpArgsText
+        .split('\n')
+        .map(line => line.trim())
+        .filter(line => line.length > 0);
+      
+      // Parse env from text (KEY=VALUE format, one per line)
+      const env = {};
+      mcpEnvText
+        .split('\n')
+        .map(line => line.trim())
+        .filter(line => line.length > 0)
+        .forEach(line => {
+          const [key, ...valueParts] = line.split('=');
+          if (key && valueParts.length > 0) {
+            env[key.trim()] = valueParts.join('=').trim();
+          }
+        });
+      
       setConfig({
         ...config,
-        mcp_servers: [...config.mcp_servers, { ...newMcpServer }]
+        mcp_servers: [...config.mcp_servers, { 
+          name: newMcpServer.name,
+          command: newMcpServer.command,
+          args,
+          env
+        }]
       });
       setNewMcpServer({ name: '', command: '', args: [], env: {} });
+      setMcpArgsText('');
+      setMcpEnvText('');
     }
   };
 
@@ -352,17 +382,25 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
 
           <div className="form-section">
             <h3>MCP 服务器</h3>
+            <p className="form-help-text">配置 Model Context Protocol 服务器以提供工具和资源。<a href="https://github.com/rahemoth/base-on-a2a-agent-system/blob/main/docs/MCP_GUIDE_CN.md" target="_blank" rel="noopener noreferrer">查看配置指南</a></p>
             
             {config.mcp_servers.map((server, index) => (
               <div key={index} className="mcp-server-item">
-                <div>
-                  <strong>{server.name}</strong>
-                  <div className="server-command">{server.command}</div>
+                <div className="mcp-server-details">
+                  <div><strong>{server.name}</strong></div>
+                  <div className="server-command">{server.command} {server.args && server.args.length > 0 && `(${server.args.length} 个参数)`}</div>
+                  {server.args && server.args.length > 0 && (
+                    <div className="server-args">参数: {server.args.join(', ')}</div>
+                  )}
+                  {server.env && Object.keys(server.env).length > 0 && (
+                    <div className="server-env">环境变量: {Object.keys(server.env).join(', ')}</div>
+                  )}
                 </div>
                 <button
                   type="button"
                   className="btn btn-icon btn-danger"
                   onClick={() => removeMcpServer(index)}
+                  title="删除服务器"
                 >
                   <Trash2 size={16} />
                 </button>
@@ -371,23 +409,45 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
 
             <div className="add-mcp-server">
               <div className="form-group">
+                <label>服务器名称 *</label>
                 <input
                   type="text"
                   value={newMcpServer.name}
                   onChange={(e) => setNewMcpServer({ ...newMcpServer, name: e.target.value })}
-                  placeholder="服务器名称"
+                  placeholder="例如: filesystem, github, brave_search"
                 />
               </div>
               <div className="form-group">
+                <label>命令 *</label>
                 <input
                   type="text"
                   value={newMcpServer.command}
                   onChange={(e) => setNewMcpServer({ ...newMcpServer, command: e.target.value })}
-                  placeholder="命令 (例如: npx, python)"
+                  placeholder="例如: npx, python, node"
                 />
               </div>
+              <div className="form-group">
+                <label>参数 (每行一个)</label>
+                <textarea
+                  value={mcpArgsText}
+                  onChange={(e) => setMcpArgsText(e.target.value)}
+                  placeholder={`例如:\n-y\n@modelcontextprotocol/server-filesystem\n/path/to/directory`}
+                  rows={3}
+                />
+                <small className="form-help-text">每行一个参数，按顺序传递给命令</small>
+              </div>
+              <div className="form-group">
+                <label>环境变量 (KEY=VALUE 格式，每行一个)</label>
+                <textarea
+                  value={mcpEnvText}
+                  onChange={(e) => setMcpEnvText(e.target.value)}
+                  placeholder={`例如:\nGITHUB_PERSONAL_ACCESS_TOKEN=ghp_xxxxx\nBRAVE_API_KEY=BSA_xxxxx`}
+                  rows={2}
+                />
+                <small className="form-help-text">用于传递 API 密钥等敏感信息</small>
+              </div>
               <button type="button" className="btn btn-secondary" onClick={addMcpServer}>
-                <Plus size={16} /> 添加服务器
+                <Plus size={16} /> 添加 MCP 服务器
               </button>
             </div>
           </div>
