@@ -250,6 +250,7 @@ const CollaborationModal = ({ agents, onClose, onStartCollaboration }) => {
                     <h3>协作进行中...</h3>
                     <div className="progress-info">
                       <span>当前轮次: {currentRound} / {maxRounds}</span>
+                      <span className="waiting-indicator">⏳ 等待任务完成...</span>
                     </div>
                   </div>
                 </div>

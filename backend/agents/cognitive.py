@@ -310,7 +310,6 @@ class CognitiveProcessor:
             ]
         
         self.current_plan = plan
-        logger.debug(f"Agent {self.agent_id}: Created execution plan with {len(plan['steps'])} steps")
         
         return plan
     

@@ -315,7 +315,6 @@ class EnhancedToolManager:
             is_builtin=True
         )
         
-        logger.debug(f"Agent {self.agent_id}: Registered {len(self.tools)} built-in tools")
     
     async def discover_tools(self) -> List[ToolCapability]:
         """
@@ -346,7 +345,6 @@ class EnhancedToolManager:
                         is_builtin=False
                     )
             
-            logger.debug(f"Agent {self.agent_id}: Discovered {len(self.tools)} total tools")
             
         except Exception as e:
             logger.error(f"Agent {self.agent_id}: Error discovering MCP tools: {e}")

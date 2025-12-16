@@ -254,7 +254,6 @@ class LLMAgentExecutor(AgentExecutor):
             else:
                 raise ValueError(f"Unsupported provider: {self.config.provider}")
             
-            logger.debug(f"Agent {self.agent_id}: Generated response ({len(response_text)} chars)")
             
             # 5. FEEDBACK PROCESSING
             feedback = self.cognitive.process_feedback(
@@ -494,7 +493,6 @@ class LLMAgentExecutor(AgentExecutor):
         
         # Generate response
         try:
-            logger.debug(f"Agent {self.agent_id}: Calling {self.config.provider.value} API (model: {self.config.model})")
             response = await self.openai_client.chat.completions.create(**kwargs)
             
             if not response.choices:

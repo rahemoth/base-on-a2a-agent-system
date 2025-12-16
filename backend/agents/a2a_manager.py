@@ -317,7 +317,6 @@ class A2AAgentManager:
                 else:
                     agent_name = agent_id
                 
-                logger.debug(f"Processing agent {agent_name} ({idx + 1}/{len(agent_ids)})")
                 
                 is_coordinator = (agent_id == coordinator_id)
                 
@@ -325,19 +324,31 @@ class A2AAgentManager:
                 if is_coordinator:
                     # Message for coordinator
                     if round_num == 0:
-                        # Initial coordinator prompt
+                        # Initial coordinator prompt - include other agents' capabilities
                         other_agents = [aid for aid in agent_ids if aid != coordinator_id]
-                        agent_names = []
+                        agent_info_list = []
                         for aid in other_agents:
                             meta = self.agent_metadata.get(aid)
                             if meta and "config" in meta:
-                                agent_names.append(meta["config"].name)
+                                config = meta["config"]
+                                agent_desc = f"- {config.name}"
+                                if config.description:
+                                    agent_desc += f": {config.description}"
+                                if config.system_message:
+                                    agent_desc += f"\n  系统提示: {config.system_message}"
+                                agent_info_list.append(agent_desc)
                             else:
-                                agent_names.append(aid)
+                                agent_info_list.append(f"- {aid}")
+                        
+                        agents_info = "\n".join(agent_info_list)
+                        first_agent_name = agent_info_list[0].split(':')[0].strip('- ') if agent_info_list else "Agent"
                         
                         message_to_send = f"""任务: {task}
 
-你是协调员智能体，与 {len(agent_ids) - 1} 个其他智能体协作: {', '.join(agent_names)}.
+你是协调员智能体，与 {len(agent_ids) - 1} 个其他智能体协作。
+
+可用智能体及其能力:
+{agents_info}
 
 重要约束:
 - 总共有 {max_rounds} 轮完成此任务
@@ -347,12 +358,13 @@ class A2AAgentManager:
 
 你作为协调员的职责:
 1. 将主任务分解为更小的子任务
-2. 为每个智能体分配具体的子任务（明确谁做什么）
-3. 协调工作并确保在 {max_rounds} 轮内完成
+2. 根据每个智能体的能力和系统提示，为其分配合适的子任务
+3. 明确指定谁做什么（例如："{first_agent_name} 应该..."）
+4. 协调工作并确保在 {max_rounds} 轮内完成
 
 请提供:
 - 你的工作分配计划
-- 每个智能体的具体分配（例如："智能体 A1 应该..."、"智能体 A2 应该..."）
+- 每个智能体的具体分配
 
 你的协调响应:"""
                     else:
@@ -560,7 +572,6 @@ class A2AAgentManager:
                 else:
                     agent_name = agent_id
                 
-                logger.debug(f"Processing agent {agent_name} ({idx + 1}/{len(agent_ids)})")
                 
                 is_coordinator = (agent_id == coordinator_id)
                 
@@ -568,19 +579,31 @@ class A2AAgentManager:
                 if is_coordinator:
                     # Message for coordinator
                     if round_num == 0:
-                        # Initial coordinator prompt
+                        # Initial coordinator prompt - include other agents' capabilities
                         other_agents = [aid for aid in agent_ids if aid != coordinator_id]
-                        agent_names = []
+                        agent_info_list = []
                         for aid in other_agents:
                             meta = self.agent_metadata.get(aid)
                             if meta and "config" in meta:
-                                agent_names.append(meta["config"].name)
+                                config = meta["config"]
+                                agent_desc = f"- {config.name}"
+                                if config.description:
+                                    agent_desc += f": {config.description}"
+                                if config.system_message:
+                                    agent_desc += f"\n  系统提示: {config.system_message}"
+                                agent_info_list.append(agent_desc)
                             else:
-                                agent_names.append(aid)
+                                agent_info_list.append(f"- {aid}")
+                        
+                        agents_info = "\n".join(agent_info_list)
+                        first_agent_name = agent_info_list[0].split(':')[0].strip('- ') if agent_info_list else "Agent"
                         
                         message_to_send = f"""任务: {task}
 
-你是协调员智能体，与 {len(agent_ids) - 1} 个其他智能体协作: {', '.join(agent_names)}.
+你是协调员智能体，与 {len(agent_ids) - 1} 个其他智能体协作。
+
+可用智能体及其能力:
+{agents_info}
 
 重要约束:
 - 总共有 {max_rounds} 轮完成此任务
@@ -590,12 +613,13 @@ class A2AAgentManager:
 
 你作为协调员的职责:
 1. 将主任务分解为更小的子任务
-2. 为每个智能体分配具体的子任务（明确谁做什么）
-3. 协调工作并确保在 {max_rounds} 轮内完成
+2. 根据每个智能体的能力和系统提示，为其分配合适的子任务
+3. 明确指定谁做什么（例如："{first_agent_name} 应该..."）
+4. 协调工作并确保在 {max_rounds} 轮内完成
 
 请提供:
 - 你的工作分配计划
-- 每个智能体的具体分配（例如："智能体 A1 应该..."、"智能体 A2 应该..."）
+- 每个智能体的具体分配
 
 你的协调响应:"""
                     else:

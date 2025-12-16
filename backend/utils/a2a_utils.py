@@ -33,7 +33,6 @@ def extract_text_from_parts(parts: List[types.Part]) -> str:
             # Fallback for cases where part is already unwrapped
             # This shouldn't normally happen but provides compatibility
             actual_part = part
-            logger.debug(f"Unexpected: Part without 'root' attribute (type: {type(part).__name__}, hasattr text: {hasattr(part, 'text')})")
         
         # Only extract from TextPart - other part types (FilePart, DataPart) don't have text
         if isinstance(actual_part, types.TextPart):

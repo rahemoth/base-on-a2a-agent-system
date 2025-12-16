@@ -109,9 +109,24 @@
 }
 
 .progress-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
   font-size: 0.875rem;
   color: var(--text-secondary);
 }
+
+.waiting-indicator {
+  color: var(--warning);
+  font-weight: 500;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
 
 .results-header {
   display: flex;

@@ -333,10 +333,9 @@ class A2AAgent:
             return stream_response()
         else:
             try:
-                logger.debug(f"Sending request to {self.config.provider.value} with model {self.config.model}")
                 # Log base URL if available (store during init for reliable access)
                 if hasattr(self, '_logged_base_url'):
-                    logger.debug(f"API base URL: {self._logged_base_url}")
+                    pass
                 
                 response = await self.openai_client.chat.completions.create(**kwargs)
                 
@@ -355,9 +354,6 @@ class A2AAgent:
                     error_msg = f"Empty content and no tool calls in response from {self.config.provider.value} (model: {self.config.model})"
                     logger.warning(error_msg)
                     raise RuntimeError(error_msg)
-                
-                if message_obj.content:
-                    logger.debug(f"Received response: {message_obj.content[:100]}...")
                 
                 if message_obj.tool_calls:
                     # Execute tools and get responses

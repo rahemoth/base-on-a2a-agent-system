@@ -96,7 +96,6 @@ class AgentMemory:
             memory_item["timestamp"] = datetime.now(timezone.utc).isoformat()
         
         self.short_term_memory.append(memory_item)
-        logger.debug(f"Agent {self.agent_id}: Added to short-term memory: {memory_item.get('role', 'unknown')}")
     
     def get_short_term_memory(self, limit: Optional[int] = None) -> List[Dict[str, Any]]:
         """
