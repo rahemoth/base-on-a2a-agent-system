@@ -400,20 +400,26 @@ class LLMAgentExecutor(AgentExecutor):
         tools_info.append("\n[Available MCP Tools]")
         tools_info.append("You have access to the following tools through MCP (Model Context Protocol):")
         
-        # Group tools by server/category
+        # Group tools by server/category, excluding built-in tools
         tools_by_category = {}
         for tool_name, tool in self.tool_manager.tools.items():
-            category = tool.category if hasattr(tool, 'category') else "general"
+            # Skip built-in tools - only show MCP tools
+            if tool.is_builtin:
+                continue
+            category = tool.category
             if category not in tools_by_category:
                 tools_by_category[category] = []
             tools_by_category[category].append(tool)
         
+        # If no MCP tools available, return empty
+        if not tools_by_category:
+            return ""
+        
         for category, tools in tools_by_category.items():
-            if category != "text_processing":  # Skip built-in tools in the listing
-                tools_info.append(f"\n### {category} tools:")
-                for tool in tools:
-                    desc = tool.description if hasattr(tool, 'description') and tool.description else "No description"
-                    tools_info.append(f"  - {tool.name}: {desc}")
+            tools_info.append(f"\n### {category} tools:")
+            for tool in tools:
+                desc = tool.description or "No description"
+                tools_info.append(f"  - {tool.name}: {desc}")
         
         tools_info.append("\nWhen the user asks for something that requires these tools, describe what you would do with them.")
         tools_info.append("Note: Tool execution is handled automatically by the system when appropriate.")
