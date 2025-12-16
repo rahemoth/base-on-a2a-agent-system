@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Users, RefreshCw, GitMerge } from 'lucide-react';
+import { Plus, Users, RefreshCw, GitMerge, Wrench } from 'lucide-react';
 import AgentCard from '../components/AgentCard';
 import AgentConfigModal from '../components/AgentConfigModal';
 import ChatModal from '../components/ChatModal';
 import CollaborationModal from '../components/CollaborationModal';
 import AgentInsightsModal from '../components/AgentInsightsModal';
+import CustomToolModal from '../components/CustomToolModal';
 import { agentService } from '../services/api';
+import { storageService } from '../services/storage';
 import './Dashboard.css';
 
 const Dashboard = () => {
@@ -16,6 +18,7 @@ const Dashboard = () => {
   const [chatAgent, setChatAgent] = useState(null);
   const [showCollaborationModal, setShowCollaborationModal] = useState(false);
   const [insightsAgent, setInsightsAgent] = useState(null);
+  const [showCustomToolModal, setShowCustomToolModal] = useState(false);
 
   useEffect(() => {
     loadAgents();
@@ -87,6 +90,34 @@ const Dashboard = () => {
     );
   };
 
+  const handleSaveCustomTool = (toolConfig) => {
+    try {
+      // Get current data
+      const currentData = storageService.exportData() || {};
+      const customTools = currentData.customTools || [];
+      
+      // Add new tool
+      customTools.push({
+        ...toolConfig,
+        id: Date.now().toString(),
+        createdAt: new Date().toISOString()
+      });
+      
+      // Save updated data
+      storageService.importData({
+        ...currentData,
+        customTools
+      });
+      
+      setShowCustomToolModal(false);
+      // TODO: Replace with toast notification
+      alert('自定义工具已保存！');
+    } catch (error) {
+      console.error('Error saving custom tool:', error);
+      alert('保存失败: ' + error.message);
+    }
+  };
+
   return (
     <div className="dashboard">
       <header className="dashboard-header">
@@ -100,6 +131,13 @@ const Dashboard = () => {
               <button className="btn btn-secondary" onClick={loadAgents}>
                 <RefreshCw size={18} />
                 刷新
+              </button>
+              <button 
+                className="btn btn-secondary" 
+                onClick={() => setShowCustomToolModal(true)}
+              >
+                <Wrench size={18} />
+                自定义工具
               </button>
               {agents.length >= 2 && (
                 <button 
@@ -180,6 +218,13 @@ const Dashboard = () => {
         <AgentInsightsModal
           agent={insightsAgent}
           onClose={() => setInsightsAgent(null)}
+        />
+      )}
+
+      {showCustomToolModal && (
+        <CustomToolModal
+          onClose={() => setShowCustomToolModal(false)}
+          onSave={handleSaveCustomTool}
         />
       )}
     </div>

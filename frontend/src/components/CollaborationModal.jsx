@@ -64,29 +64,64 @@ const CollaborationModal = ({ agents, onClose, onStartCollaboration }) => {
     setRealtimeMessages([initialMsg]);
 
     try {
-      // Simulate real-time updates by calling the API
-      // In a real implementation, this could use WebSocket or Server-Sent Events
-      const result = await onStartCollaboration({
-        agents: selectedAgents,
-        task: task,
-        coordinator_agent: coordinatorAgent || null,
-        max_rounds: maxRounds
+      // Use Server-Sent Events for real-time updates
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      const response = await fetch(`${API_BASE_URL}/api/agents/collaborate/stream`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          agents: selectedAgents,
+          task: task,
+          coordinator_agent: coordinatorAgent || null,
+          max_rounds: maxRounds
+        }),
       });
-      
-      // Display messages one by one with delay for real-time effect
-      if (result.collaboration_history) {
-        for (const msg of result.collaboration_history) {
-          await new Promise(resolve => setTimeout(resolve, MESSAGE_DISPLAY_DELAY));
-          setRealtimeMessages(prev => [...prev, msg]);
-          
-          // Update round number from system messages
-          if (msg.role === 'system' && msg.metadata?.round) {
-            setCurrentRound(msg.metadata.round);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || ''; // Keep incomplete line in buffer
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              
+              if (data.type === 'message') {
+                setRealtimeMessages(prev => [...prev, data.data]);
+                
+                // Update round number from system messages
+                if (data.data.role === 'system' && data.data.metadata?.round) {
+                  setCurrentRound(data.data.metadata.round);
+                }
+              } else if (data.type === 'complete') {
+                // Collaboration completed
+                setCollaborationResult({ collaboration_history: [] }); // Just to show completed state
+              } else if (data.type === 'error') {
+                setError('协作错误: ' + data.message);
+              }
+            } catch (e) {
+              console.error('Error parsing SSE data:', e);
+            }
           }
         }
       }
       
-      setCollaborationResult(result);
+      setCollaborationResult({ collaboration_history: [] }); // Mark as completed
     } catch (error) {
       setError('启动协作失败: ' + error.message);
     } finally {
