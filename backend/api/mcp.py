@@ -30,34 +30,32 @@ async def get_agent_mcp_status(agent_id: str):
         connected_servers = list(client.sessions.keys())
         
         # Try to list tools to verify connections are working
-        tools = {}
         total_tools = 0
         server_status = []
         
         for server_name in connected_servers:
             try:
                 server_tools = await client.list_tools(server_name)
-                tool_count = len(server_tools.get(server_name, []))
+                tools_list = server_tools.get(server_name, [])
+                tool_count = len(tools_list)
                 total_tools += tool_count
-                tools[server_name] = server_tools.get(server_name, [])
                 server_status.append({
                     "name": server_name,
                     "status": "connected",
                     "tools_count": tool_count
                 })
-            except Exception as e:
+            except Exception:
                 server_status.append({
                     "name": server_name,
                     "status": "error",
-                    "error": str(e)
+                    "error": "Failed to list tools from server"
                 })
         
         return {
             "status": "ok" if connected_servers else "no_servers",
             "message": f"Agent has {len(connected_servers)} MCP server(s) connected with {total_tools} tool(s) available." if connected_servers else "No MCP servers connected.",
             "connected_servers": server_status,
-            "tools_available": total_tools,
-            "tools": tools
+            "tools_available": total_tools
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
