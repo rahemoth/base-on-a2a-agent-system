@@ -6,15 +6,12 @@ export function TypingAnimation({ text, duration = 200, className }) {
   const [i, setI] = useState(0);
 
   useEffect(() => {
-    const typingEffect = setInterval(() => {
-      if (i < text.length) {
-        setDisplayedText(text.substring(0, i + 1));
-        setI(i + 1);
-      } else {
-        clearInterval(typingEffect);
-      }
+    if (i >= text.length) return;
+    const timeout = setTimeout(() => {
+      setDisplayedText(text.substring(0, i + 1));
+      setI(i + 1);
     }, duration);
-    return () => clearInterval(typingEffect);
+    return () => clearTimeout(timeout);
   }, [duration, i, text]);
 
   return (
