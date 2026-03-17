@@ -1,0 +1,60 @@
+export const TIMELINE = [
+  {
+    year: "2025",
+    title: "高级全栈工程师",
+    titleEn: "Senior Full-Stack Engineer",
+    institution: "科技创业公司",
+    institutionEn: "Tech Startup",
+    description: "负责公司核心产品的架构设计与开发，带领团队探索 AI 驱动的产品创新。",
+    descriptionEn: "Responsible for the architecture design and development of core products, leading the team to explore AI-driven product innovation.",
+    type: "work",
+  },
+  {
+    year: "2024",
+    title: "AI 应用开发研究",
+    titleEn: "AI Application Development Research",
+    institution: "独立研究",
+    institutionEn: "Independent Research",
+    description: "深入研究大语言模型的应用场景，探索 A2A（Agent-to-Agent）协议的实现与优化。",
+    descriptionEn: "In-depth research on application scenarios for large language models, exploring implementation and optimization of A2A (Agent-to-Agent) protocols.",
+    type: "work",
+  },
+  {
+    year: "2023",
+    title: "全栈开发工程师",
+    titleEn: "Full-Stack Developer",
+    institution: "互联网公司",
+    institutionEn: "Internet Company",
+    description: "专注于 React 生态系统和 Python 后端开发，参与多个大型项目的设计与实施。",
+    descriptionEn: "Focused on React ecosystem and Python backend development, participating in the design and implementation of multiple large-scale projects.",
+    type: "work",
+  },
+  {
+    year: "2022",
+    title: "计算机科学学士",
+    titleEn: "Bachelor of Computer Science",
+    institution: "某重点大学",
+    institutionEn: "Key University",
+    description: "主修计算机科学，辅修人工智能，期间参与多项科研项目，发表了相关论文。",
+    descriptionEn: "Majored in Computer Science, minored in Artificial Intelligence, participated in several research projects and published related papers.",
+    type: "education",
+  },
+  {
+    year: "2020",
+    title: "开始编程之旅",
+    titleEn: "Started Programming Journey",
+    institution: "自学",
+    institutionEn: "Self-taught",
+    description: "从 Python 入门，逐步学习 Web 开发，打开了编程世界的大门。",
+    descriptionEn: "Started with Python, gradually learning web development, opening the door to the world of programming.",
+    type: "education",
+  },
+];
+
+export const SKILLS = [
+  "React", "TypeScript", "Python", "FastAPI", "Node.js",
+  "Tailwind CSS", "Framer Motion", "Docker", "PostgreSQL",
+  "Redis", "AI/LLM", "System Design", "Git", "Linux",
+  "REST API", "GraphQL", "MongoDB", "Next.js", "Vue.js",
+  "Machine Learning", "Data Analysis"
+];

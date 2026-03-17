@@ -1,0 +1,27 @@
+import { useEffect, useState } from "react";
+import { cn } from "../../lib/utils";
+
+export function TypingAnimation({ text, duration = 200, className }) {
+  const [displayedText, setDisplayedText] = useState("");
+  const [charIndex, setCharIndex] = useState(0);
+
+  useEffect(() => {
+    if (charIndex >= text.length) return;
+    const timeout = setTimeout(() => {
+      setDisplayedText(text.substring(0, charIndex + 1));
+      setCharIndex(charIndex + 1);
+    }, duration);
+    return () => clearTimeout(timeout);
+  }, [duration, charIndex, text]);
+
+  return (
+    <h1
+      className={cn(
+        "font-display text-center text-4xl font-bold leading-[5rem] tracking-[-0.02em] drop-shadow-sm",
+        className
+      )}
+    >
+      {displayedText ? displayedText : text}
+    </h1>
+  );
+}
