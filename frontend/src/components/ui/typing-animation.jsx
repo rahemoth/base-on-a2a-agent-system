@@ -3,16 +3,16 @@ import { cn } from "../../lib/utils";
 
 export function TypingAnimation({ text, duration = 200, className }) {
   const [displayedText, setDisplayedText] = useState("");
-  const [i, setI] = useState(0);
+  const [charIndex, setCharIndex] = useState(0);
 
   useEffect(() => {
-    if (i >= text.length) return;
+    if (charIndex >= text.length) return;
     const timeout = setTimeout(() => {
-      setDisplayedText(text.substring(0, i + 1));
-      setI(i + 1);
+      setDisplayedText(text.substring(0, charIndex + 1));
+      setCharIndex(charIndex + 1);
     }, duration);
     return () => clearTimeout(timeout);
-  }, [duration, i, text]);
+  }, [duration, charIndex, text]);
 
   return (
     <h1
