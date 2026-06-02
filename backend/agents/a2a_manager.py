@@ -3,6 +3,7 @@ A2A-compliant Agent Manager using the official a2a-sdk
 """
 import uuid
 import logging
+import asyncio
 from typing import Dict, Optional, List
 from datetime import datetime, timezone
 
@@ -33,17 +34,20 @@ class A2AAgentManager:
     
     def _create_agent_card(self, agent_id: str, config: AgentConfig) -> types.AgentCard:
         """Create an A2A agent card for the agent"""
-        # Determine base URL for the agent
         protocol = "https" if settings.host != "localhost" and settings.host != "127.0.0.1" else "http"
         base_url = f"{protocol}://{settings.host}:{settings.port}"
-        
-        # Create agent card
+
         return types.AgentCard(
             name=config.name,
             description=config.description or f"AI Agent powered by {config.provider.value}",
-            protocol_version="0.3.0",
             version="1.0.0",
-            url=f"{base_url}/api/agents/{agent_id}",
+            documentation_url=f"{base_url}/api/agents/{agent_id}",
+            capabilities=types.AgentCapabilities(
+                streaming=False,
+                push_notifications=False,
+            ),
+            default_input_modes=["text"],
+            default_output_modes=["text"],
             skills=[
                 types.AgentSkill(
                     id="chat",
@@ -52,12 +56,6 @@ class A2AAgentManager:
                     tags=["chat", "conversation"]
                 )
             ],
-            capabilities=types.AgentCapabilities(
-                push_notifications=False,
-                streaming=False,  # Can be enabled later
-            ),
-            default_input_modes=["text"],
-            default_output_modes=["text"],
         )
     
     async def create_agent(self, config: AgentConfig) -> AgentResponse:
@@ -87,6 +85,7 @@ class A2AAgentManager:
         # Create request handler with proper parameters
         request_handler = DefaultRequestHandler(
             agent_executor=executor,
+            agent_card=agent_card,
             task_store=task_store,
             queue_manager=queue_manager,
         )
@@ -208,27 +207,89 @@ class A2AAgentManager:
         task_id: Optional[str] = None,
     ) -> types.Message:
         """Send a message to an agent and get response"""
-        handler = self.request_handlers.get(agent_id)
-        if not handler:
+        executor = self.agents.get(agent_id)
+        if not executor:
             logger.error(f"Agent {agent_id} not found")
             raise ValueError(f"Agent {agent_id} not found")
         
         # Create message
         message = types.Message(
-            kind="message",
             message_id=str(uuid.uuid4()),
-            role=types.Role.user,
-            parts=[types.TextPart(kind="text", text=message_text)],
+            role=types.Role.ROLE_USER,
+            parts=[types.Part(text=message_text)],
             context_id=context_id,
             task_id=task_id,
         )
         
-        # Send message through handler
-        params = types.MessageSendParams(message=message)
+        # Create send message request
+        request = types.SendMessageRequest(message=message)
         
-        # Call the handler's on_message_send method directly
-        response = await handler.on_message_send(params)
-        return response
+        # Create server call context
+        from a2a.server.context import ServerCallContext
+        call_context = ServerCallContext()
+        
+        # Create request context
+        from a2a.server.agent_execution import RequestContext
+        request_context = RequestContext(call_context=call_context, request=request)
+        
+        # Create event queue
+        from a2a.server.events.event_queue import EventQueue
+        event_queue = EventQueue()
+        
+        # Execute agent
+        await executor.execute(request_context, event_queue)
+        
+        # Get response from event queue
+        events = []
+        max_wait = 60  # 最大等待60秒
+        wait_time = 0
+        
+        try:
+            while wait_time < max_wait:
+                try:
+                    event = await asyncio.wait_for(event_queue.dequeue_event(), timeout=1.0)
+                    if event:
+                        logger.info(f"Received event: {type(event).__name__}")
+                        events.append(event)
+                        
+                        # 检查是否是 Message 类型
+                        if isinstance(event, types.Message):
+                            logger.info(f"Got Message event with parts: {len(event.parts)}")
+                            if event.parts and len(event.parts) > 0:
+                                for part in event.parts:
+                                    if hasattr(part, 'text') and part.text:
+                                        logger.info(f"Returning message with text length: {len(part.text)}")
+                                        return event
+                        # 如果是其他类型的事件，尝试提取消息
+                        elif hasattr(event, 'message') and event.message:
+                            logger.info(f"Got event with message attribute")
+                            return event.message
+                        
+                except asyncio.TimeoutError:
+                    wait_time += 1
+                    continue
+        except Exception as e:
+            logger.error(f"Error reading event queue: {e}")
+        
+        # 如果从队列中获取到了事件，尝试从中提取消息
+        if events:
+            logger.info(f"Total events received: {len(events)}")
+            for i, event in enumerate(events):
+                logger.info(f"Event {i}: {type(event).__name__}")
+                if isinstance(event, types.Message):
+                    return event
+                if hasattr(event, 'message') and event.message:
+                    return event.message
+        
+        # 如果还是没有响应，使用 fallback 响应
+        logger.warning("No events received from agent, using fallback response")
+        return types.Message(
+            message_id=str(uuid.uuid4()),
+            role=types.Role.ROLE_AGENT,
+            parts=[types.Part(text="Agent processed your request")],
+            context_id=context_id,
+            task_id=task_id,
+        )
     
     async def collaborate_agents(
         self,

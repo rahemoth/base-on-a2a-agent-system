@@ -9,12 +9,13 @@ from datetime import datetime
 from a2a import types
 from a2a.server.agent_execution import AgentExecutor, RequestContext
 from a2a.server.events import EventQueue
-from a2a.utils import parts as parts_utils
+
 from google import genai
 from openai import AsyncOpenAI
 
 from backend.models import AgentConfig, ModelProvider
 from backend.mcp import mcp_manager
+from backend.config import settings
 from backend.utils.a2a_utils import extract_text_from_parts
 from backend.agents.memory import AgentMemory
 from backend.agents.cognitive import CognitiveProcessor
@@ -71,7 +72,8 @@ class LLMAgentExecutor(AgentExecutor):
                 logger.info(f"Agent {self.agent_id}: Google client initialized")
             else:
                 logger.warning(f"Agent {self.agent_id}: Google API key not provided")
-        elif self.config.provider in [ModelProvider.OPENAI, ModelProvider.LMSTUDIO, 
+        elif self.config.provider in [ModelProvider.OPENAI, ModelProvider.DEEPSEEK,
+                                      ModelProvider.LMSTUDIO, 
                                       ModelProvider.LOCALAI, ModelProvider.OLLAMA, 
                                       ModelProvider.TEXTGEN_WEBUI, ModelProvider.CUSTOM]:
             # For OpenAI and all local/custom providers using OpenAI-compatible API
@@ -88,6 +90,10 @@ class LLMAgentExecutor(AgentExecutor):
             elif self.config.provider == ModelProvider.OPENAI:
                 # Use official OpenAI API (no custom base URL)
                 base_url = None
+
+            elif self.config.provider == ModelProvider.DEEPSEEK:
+                # DeepSeek API endpoint
+                base_url = "https://api.deepseek.com/v1"
 
             else:
                 # Default URLs for each local provider
@@ -196,7 +202,7 @@ class LLMAgentExecutor(AgentExecutor):
                     msg_text = self._extract_text_from_message(msg)
                     if msg_text:
                         context_messages.append({
-                            "role": "user" if msg.role == types.Role.user else "assistant",
+                            "role": "user" if msg.role == types.Role.ROLE_USER else "assistant",
                             "content": msg_text
                         })
             
@@ -245,9 +251,17 @@ class LLMAgentExecutor(AgentExecutor):
             # Add cognitive context to the generation
             cognitive_context = self._build_cognitive_context(perception, reasoning, decision)
             
-            if self.config.provider == ModelProvider.GOOGLE:
+            # Check if API key is configured
+            api_key = self.config.openai_api_key or self.config.google_api_key or settings.openai_api_key or settings.google_api_key
+            
+            if not api_key:
+                # No API key configured, return mock response
+                logger.warning(f"Agent {self.agent_id}: No API key configured, returning mock response")
+                response_text = f"[Mock Response] I have processed your request: '{text_content}'. This is a simulated response since no LLM API key has been configured."
+            elif self.config.provider == ModelProvider.GOOGLE:
                 response_text = await self._generate_google(text_content, request_context, cognitive_context)
-            elif self.config.provider in [ModelProvider.OPENAI, ModelProvider.LMSTUDIO, 
+            elif self.config.provider in [ModelProvider.OPENAI, ModelProvider.DEEPSEEK,
+                                          ModelProvider.LMSTUDIO, 
                                           ModelProvider.LOCALAI, ModelProvider.OLLAMA, 
                                           ModelProvider.TEXTGEN_WEBUI, ModelProvider.CUSTOM]:
                 response_text = await self._generate_openai(text_content, request_context, cognitive_context)
@@ -351,10 +365,9 @@ class LLMAgentExecutor(AgentExecutor):
     ) -> types.Message:
         """Create an A2A message with text content"""
         return types.Message(
-            kind="message",
             message_id=str(uuid.uuid4()),
-            role=types.Role.agent,
-            parts=[types.TextPart(kind="text", text=text)],
+            role=types.Role.ROLE_AGENT,
+            parts=[types.Part(text=text)],
             context_id=context_id,
             task_id=task_id
         )
@@ -438,7 +451,7 @@ class LLMAgentExecutor(AgentExecutor):
         if hasattr(request_context, 'task') and request_context.task:
             # Get messages from task history
             for msg in request_context.task.messages:
-                role = "user" if msg.role == types.Role.user else "model"
+                role = "user" if msg.role == types.Role.ROLE_USER else "model"
                 msg_text = self._extract_text_from_message(msg)
                 if msg_text:
                     contents.append(genai.types.Content(
@@ -514,7 +527,7 @@ class LLMAgentExecutor(AgentExecutor):
         # Add context messages if available
         if hasattr(request_context, 'task') and request_context.task:
             for msg in request_context.task.messages:
-                role = "user" if msg.role == types.Role.user else "assistant"
+                role = "user" if msg.role == types.Role.ROLE_USER else "assistant"
                 msg_text = self._extract_text_from_message(msg)
                 if msg_text:
                     messages.append({

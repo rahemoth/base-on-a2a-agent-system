@@ -21,6 +21,14 @@ const OPENAI_MODELS = [
   { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' }
 ];
 
+const DEEPSEEK_MODELS = [
+  { value: 'deepseek-chat', label: 'DeepSeek Chat (V3)' },
+  { value: 'deepseek-coder', label: 'DeepSeek Coder' },
+  { value: 'deepseek-reasoner', label: 'DeepSeek Reasoner' },
+  { value: 'deepseek-v4-pro', label: 'DeepSeek V4 Pro' },
+  { value: 'deepseek-v4-flash', label: 'DeepSeek V4 Flash' }
+];
+
 // Provider definitions with their characteristics
 const PROVIDERS = {
   google: {
@@ -38,6 +46,15 @@ const PROVIDERS = {
     apiKeyField: 'openai_api_key',
     apiKeyLabel: 'OpenAI API 密钥',
     defaultModel: 'gpt-4o-mini'
+  },
+  deepseek: {
+    label: 'DeepSeek',
+    models: DEEPSEEK_MODELS,
+    requiresApiKey: true,
+    apiKeyField: 'openai_api_key',
+    apiKeyLabel: 'DeepSeek API 密钥',
+    defaultModel: 'deepseek-chat',
+    defaultBaseUrl: 'https://api.deepseek.com/v1'
   },
   lmstudio: {
     label: '本地 AI 模型 (LM Studio, Ollama 等)',
@@ -315,6 +332,21 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
             {config.provider === 'openai' && (
               <div className="form-group">
                 <label>OpenAI API 密钥 (可选)</label>
+                <input
+                  type="password"
+                  value={config.openai_api_key || ''}
+                  onChange={(e) => setConfig({ ...config, openai_api_key: e.target.value || null })}
+                  placeholder="留空则使用 .env 文件中的全局 API 密钥"
+                />
+                <small className="form-hint">
+                  单个 Agent 的 API 密钥会覆盖全局 OPENAI_API_KEY 设置
+                </small>
+              </div>
+            )}
+
+            {config.provider === 'deepseek' && (
+              <div className="form-group">
+                <label>DeepSeek API 密钥 (可选)</label>
                 <input
                   type="password"
                   value={config.openai_api_key || ''}

@@ -19,6 +19,7 @@ class ModelProvider(str, Enum):
     """Model provider enumeration"""
     GOOGLE = "google"
     OPENAI = "openai"
+    DEEPSEEK = "deepseek"
     LMSTUDIO = "lmstudio"
     LOCALAI = "localai"
     OLLAMA = "ollama"
