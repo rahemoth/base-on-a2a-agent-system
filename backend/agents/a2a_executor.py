@@ -15,7 +15,6 @@ from openai import AsyncOpenAI
 
 from backend.models import AgentConfig, ModelProvider
 from backend.mcp import mcp_manager
-from backend.config import settings
 from backend.utils.a2a_utils import extract_text_from_parts
 from backend.agents.memory import AgentMemory
 from backend.agents.cognitive import CognitiveProcessor
@@ -252,7 +251,7 @@ class LLMAgentExecutor(AgentExecutor):
             cognitive_context = self._build_cognitive_context(perception, reasoning, decision)
             
             # Check if API key is configured
-            api_key = self.config.openai_api_key or self.config.google_api_key or settings.openai_api_key or settings.google_api_key
+            api_key = self.config.openai_api_key or self.config.google_api_key or settings.OPENAI_API_KEY or settings.GOOGLE_API_KEY
             
             if not api_key:
                 # No API key configured, return mock response

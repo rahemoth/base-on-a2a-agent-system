@@ -241,48 +241,21 @@ class A2AAgentManager:
         
         # Get response from event queue
         events = []
-        max_wait = 60  # 最大等待60秒
-        wait_time = 0
+        while not event_queue.is_closed():
+            try:
+                event = await asyncio.wait_for(event_queue.dequeue_event(), timeout=1.0)
+                if event:
+                    events.append(event)
+            except asyncio.TimeoutError:
+                break
         
-        try:
-            while wait_time < max_wait:
-                try:
-                    event = await asyncio.wait_for(event_queue.dequeue_event(), timeout=1.0)
-                    if event:
-                        logger.info(f"Received event: {type(event).__name__}")
-                        events.append(event)
-                        
-                        # 检查是否是 Message 类型
-                        if isinstance(event, types.Message):
-                            logger.info(f"Got Message event with parts: {len(event.parts)}")
-                            if event.parts and len(event.parts) > 0:
-                                for part in event.parts:
-                                    if hasattr(part, 'text') and part.text:
-                                        logger.info(f"Returning message with text length: {len(part.text)}")
-                                        return event
-                        # 如果是其他类型的事件，尝试提取消息
-                        elif hasattr(event, 'message') and event.message:
-                            logger.info(f"Got event with message attribute")
-                            return event.message
-                        
-                except asyncio.TimeoutError:
-                    wait_time += 1
-                    continue
-        except Exception as e:
-            logger.error(f"Error reading event queue: {e}")
-        
-        # 如果从队列中获取到了事件，尝试从中提取消息
+        # Return the last message event as response
         if events:
-            logger.info(f"Total events received: {len(events)}")
-            for i, event in enumerate(events):
-                logger.info(f"Event {i}: {type(event).__name__}")
-                if isinstance(event, types.Message):
-                    return event
-                if hasattr(event, 'message') and event.message:
+            for event in reversed(events):
+                if hasattr(event, 'message'):
                     return event.message
         
-        # 如果还是没有响应，使用 fallback 响应
-        logger.warning("No events received from agent, using fallback response")
+        # Fallback: create a simple response
         return types.Message(
             message_id=str(uuid.uuid4()),
             role=types.Role.ROLE_AGENT,

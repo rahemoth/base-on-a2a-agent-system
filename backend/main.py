@@ -10,6 +10,7 @@ import os
 from backend.api import mcp_router
 from backend.api.agents_a2a import router as agents_router
 from backend.api.agent_capabilities import router as capabilities_router
+from backend.api.rag import router as rag_router
 from backend.config import settings
 from backend.agents.a2a_manager import a2a_agent_manager
 from backend.mcp import mcp_manager
@@ -47,6 +48,7 @@ app.add_middleware(
 app.include_router(agents_router)
 app.include_router(capabilities_router)
 app.include_router(mcp_router)
+app.include_router(rag_router)
 
 
 @app.get("/")
