@@ -7,76 +7,160 @@ import './AgentConfigModal.css';
 const SETTINGS_SAVE_DEBOUNCE_MS = 1000; // Debounce delay for auto-save
 
 // Supported models for each provider
-const GOOGLE_MODELS = [
-  { value: 'gemini-2.0-flash-exp', label: 'Gemini 2.0 Flash' },
-  { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro' },
-  { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash' }
+const GEMINI_MODELS = [
+  { value: 'gemini-3.5-flash', label: 'Gemini 3.5 Flash' },
+  { value: 'gemini-3.1-pro', label: 'Gemini 3.1 Pro' }
 ];
 
-const OPENAI_MODELS = [
-  { value: 'gpt-4', label: 'GPT-4' },
-  { value: 'gpt-4-turbo', label: 'GPT-4 Turbo' },
-  { value: 'gpt-4o', label: 'GPT-4o' },
-  { value: 'gpt-4o-mini', label: 'GPT-4o Mini' },
-  { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' }
+const GPT_MODELS = [
+  { value: 'gpt-5.5-pro', label: 'GPT-5.5 Pro' },
+  { value: 'gpt-5.5', label: 'GPT-5.5' },
+  { value: 'gpt-5.4', label: 'GPT-5.4' }
+];
+
+const CLAUDE_MODELS = [
+  { value: 'claude-opus-4.8', label: 'Claude Opus 4.8' },
+  { value: 'claude-sonnet-4.6', label: 'Claude Sonnet 4.6' },
+  { value: 'claude-haiku-4.5', label: 'Claude Haiku 4.5' }
 ];
 
 const DEEPSEEK_MODELS = [
-  { value: 'deepseek-chat', label: 'DeepSeek Chat (V3)' },
-  { value: 'deepseek-coder', label: 'DeepSeek Coder' },
-  { value: 'deepseek-reasoner', label: 'DeepSeek Reasoner' },
-  { value: 'deepseek-chat-v4', label: 'DeepSeek Chat (V4)' },
-  { value: 'deepseek-chat-v4.5', label: 'DeepSeek Chat (V4.5)' },
-  { value: 'deepseek-chat-v4-turbo', label: 'DeepSeek Chat (V4 Turbo)' }
+  { value: 'deepseek-v4-pro', label: 'DeepSeek V4 Pro' },
+  { value: 'deepseek-v4-flash', label: 'DeepSeek V4 Flash' }
+];
+
+const KIMI_MODELS = [
+  { value: 'kimi-2.6', label: 'Kimi 2.6' },
+  { value: 'kimi-2.5', label: 'Kimi 2.5' }
+];
+
+const MIMO_MODELS = [
+  { value: 'mimo-2.5-pro', label: 'MiMo 2.5 Pro' },
+  { value: 'mimo-2.5', label: 'MiMo 2.5' }
+];
+
+const MINIMAX_MODELS = [
+  { value: 'minimax-m3', label: 'MiniMax M3' },
+  { value: 'minimax-m2.7', label: 'MiniMax M2.7' }
+];
+
+const GLM_MODELS = [
+  { value: 'glm-5.1', label: 'GLM-5.1' },
+  { value: 'glm-5', label: 'GLM-5' },
+  { value: 'glm-4.7', label: 'GLM-4.7' }
+];
+
+const QWEN_MODELS = [
+  { value: 'qwen3.7', label: 'Qwen 3.7' },
+  { value: 'qwen3.7-max', label: 'Qwen 3.7 Max' },
+  { value: 'qwen3.5-flash', label: 'Qwen 3.5 Flash' },
+  { value: 'qwen3-max', label: 'Qwen 3 Max' },
+  { value: 'qwen3-coder', label: 'Qwen 3 Coder' }
 ];
 
 // Provider definitions with their characteristics
 const PROVIDERS = {
-  google: {
-    label: 'Google (Gemini)',
-    models: GOOGLE_MODELS,
-    requiresApiKey: true,
-    apiKeyField: 'google_api_key',
-    apiKeyLabel: 'Google API 密钥',
-    defaultModel: 'gemini-2.0-flash-exp'
-  },
-  openai: {
-    label: 'OpenAI (GPT)',
-    models: OPENAI_MODELS,
-    requiresApiKey: true,
-    apiKeyField: 'openai_api_key',
-    apiKeyLabel: 'OpenAI API 密钥',
-    defaultModel: 'gpt-4o-mini'
-  },
   deepseek: {
-    label: 'DeepSeek',
+    label: 'DeepSeek（深度求索）',
     models: DEEPSEEK_MODELS,
     requiresApiKey: true,
     apiKeyField: 'openai_api_key',
     apiKeyLabel: 'DeepSeek API 密钥',
-    defaultModel: 'deepseek-chat-v4.5',
-    defaultBaseUrl: 'https://api.deepseek.com/v1'
+    defaultModel: 'deepseek-v4-pro',
+    defaultBaseUrl: 'https://api.deepseek.com/v1',
+    isLocal: false
   },
-  lmstudio: {
-    label: '本地 AI 模型 (LM Studio, Ollama 等)',
+  kimi: {
+    label: 'Kimi（月之暗面）',
+    models: KIMI_MODELS,
+    requiresApiKey: true,
+    apiKeyField: 'kimi_api_key',
+    apiKeyLabel: 'Kimi API 密钥',
+    defaultModel: 'kimi-2.6',
+    defaultBaseUrl: 'https://api.moonshot.cn/v1',
+    isLocal: false
+  },
+  mimo: {
+    label: 'MiMo（小米）',
+    models: MIMO_MODELS,
+    requiresApiKey: true,
+    apiKeyField: 'mimo_api_key',
+    apiKeyLabel: 'MiMo API 密钥',
+    defaultModel: 'mimo-2.5-pro',
+    defaultBaseUrl: 'https://api.xiaomi.com/v1',
+    isLocal: false
+  },
+  minimax: {
+    label: 'MiniMax',
+    models: MINIMAX_MODELS,
+    requiresApiKey: true,
+    apiKeyField: 'minimax_api_key',
+    apiKeyLabel: 'MiniMax API 密钥',
+    defaultModel: 'minimax-m3',
+    defaultBaseUrl: 'https://api.minimax.chat/v1/text/chatcompletion',
+    isLocal: false
+  },
+  glm: {
+    label: 'GLM（智谱AI）',
+    models: GLM_MODELS,
+    requiresApiKey: true,
+    apiKeyField: 'zhipu_api_key',
+    apiKeyLabel: '智谱 API 密钥',
+    defaultModel: 'glm-5.1',
+    defaultBaseUrl: 'https://open.bigmodel.cn/api/paas/v4',
+    isLocal: false
+  },
+  claude: {
+    label: 'Claude',
+    models: CLAUDE_MODELS,
+    requiresApiKey: true,
+    apiKeyField: 'anthropic_api_key',
+    apiKeyLabel: 'Anthropic API 密钥',
+    defaultModel: 'claude-opus-4.8',
+    defaultBaseUrl: 'https://api.anthropic.com/v1',
+    isLocal: false
+  },
+  gpt: {
+    label: 'GPT',
+    models: GPT_MODELS,
+    requiresApiKey: true,
+    apiKeyField: 'openai_api_key',
+    apiKeyLabel: 'OpenAI API 密钥',
+    defaultModel: 'gpt-5.5-pro',
+    defaultBaseUrl: 'https://api.openai.com/v1',
+    isLocal: false
+  },
+  gemini: {
+    label: 'Gemini',
+    models: GEMINI_MODELS,
+    requiresApiKey: true,
+    apiKeyField: 'google_api_key',
+    apiKeyLabel: 'Google API 密钥',
+    defaultModel: 'gemini-3.5-flash',
+    isLocal: false
+  },
+  qwen: {
+    label: 'QWEN',
+    models: QWEN_MODELS,
+    requiresApiKey: true,
+    apiKeyField: 'qwen_api_key',
+    apiKeyLabel: 'Qwen API 密钥',
+    defaultModel: 'qwen3.7',
+    defaultBaseUrl: 'https://dashscope.aliyuncs.com/api/text-generation/v1',
+    isLocal: false
+  },
+  custom: {
+    label: '自定义 API (OpenAI 兼容)',
     requiresApiKey: false,
     requiresModelInput: true,
     defaultBaseUrl: 'http://localhost:1234/v1',
-    defaultModel: 'local-model',
+    defaultModel: 'custom-model',
     isLocal: true
   }
 };
 
 
-// Compression models (small/fast models for context compression)
-const COMPRESSION_MODELS = [
-  { value: 'gpt-4o-mini', label: 'GPT-4o Mini (推荐)' },
-  { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' },
-  { value: 'deepseek-chat-v4', label: 'DeepSeek Chat V4' },
-  { value: 'deepseek-v4-flash', label: 'DeepSeek V4 Flash' },
-  { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash' },
-  { value: 'local-model', label: '本地模型' }
-];
+
 
 const AgentConfigModal = ({ agent, onClose, onSave }) => {
   // Load saved settings from localStorage if available for editing
@@ -90,13 +174,19 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
     return agent?.config || {
       name: '',
       description: '',
-      provider: 'google',
-      model: 'gemini-2.0-flash-exp',
+      provider: 'deepseek',
+      model: 'deepseek-v4-pro',
       system_prompt: '',
       temperature: 0.7,
       max_tokens: null,
       google_api_key: null,
       openai_api_key: null,
+      anthropic_api_key: null,
+      kimi_api_key: null,
+      mimo_api_key: null,
+      minimax_api_key: null,
+      zhipu_api_key: null,
+      qwen_api_key: null,
       api_base_url: null,
       openai_base_url: null, // Keep for backward compatibility
       mcp_servers: [],
@@ -105,8 +195,8 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
       rag_enabled: false,
       compression: {
         enabled: false,
-        provider: 'openai',
-        model: 'gpt-4o-mini',
+        provider: 'deepseek',
+        model: 'deepseek-v4-pro',
         api_key: null,
         base_url: null,
         max_tokens: 500,
@@ -129,12 +219,11 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
     }
   }, [config, agent?.id]);
 
-  // State for custom model name input (for local providers)
+  // State for custom model name input (for local/custom providers)
   const [customModel, setCustomModel] = useState(() => {
     if (!agent?.config?.model || !agent?.config?.provider) return '';
-    if (agent.config.provider === 'lmstudio' || agent.config.provider === 'localai' || 
-        agent.config.provider === 'ollama' || agent.config.provider === 'textgen-webui' || 
-        agent.config.provider === 'custom') {
+    const providerInfo = PROVIDERS[agent.config.provider];
+    if (providerInfo?.requiresModelInput) {
       return agent.config.model;
     }
     return '';
@@ -151,6 +240,14 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
   const [mcpArgsText, setMcpArgsText] = useState('');
   const [mcpEnvText, setMcpEnvText] = useState('');
 
+  // State for test connection
+  const [isTesting, setIsTesting] = useState(false);
+  const [testResult, setTestResult] = useState(null);
+  
+  // State for compression model test connection
+  const [isCompressionTesting, setIsCompressionTesting] = useState(false);
+  const [compressionTestResult, setCompressionTestResult] = useState(null);
+
   // Track if mouse was pressed on overlay for proper drag handling
   const overlayClickStarted = React.useRef(false);
 
@@ -159,6 +256,53 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
     onSave(config);
   };
 
+  const handleTestConnection = async () => {
+    setIsTesting(true);
+    setTestResult(null);
+    
+    try {
+      const result = await agentService.testConnection(config);
+      setTestResult(result);
+    } catch (error) {
+      setTestResult({
+        success: false,
+        message: error.response?.data?.detail || error.message || '测试连接失败'
+      });
+    } finally {
+      setIsTesting(false);
+    }
+  };
+
+  const handleCompressionTestConnection = async () => {
+    setIsCompressionTesting(true);
+    setCompressionTestResult(null);
+    
+    try {
+      const compressionConfig = {
+        provider: config.compression?.provider || 'deepseek',
+        model: config.compression?.model || '',
+        api_base_url: config.compression?.api_base_url,
+        openai_api_key: config.compression?.api_key,
+        anthropic_api_key: config.compression?.api_key,
+        kimi_api_key: config.compression?.api_key,
+        mimo_api_key: config.compression?.api_key,
+        minimax_api_key: config.compression?.api_key,
+        zhipu_api_key: config.compression?.api_key,
+        qwen_api_key: config.compression?.api_key,
+        google_api_key: config.compression?.api_key,
+      };
+      
+      const result = await agentService.testConnection(compressionConfig);
+      setCompressionTestResult(result);
+    } catch (error) {
+      setCompressionTestResult({
+        success: false,
+        message: error.response?.data?.detail || error.message || '测试压缩模型连接失败'
+      });
+    } finally {
+      setIsCompressionTesting(false);
+    }
+  };
 
   const addMcpServer = () => {
     if (newMcpServer.name && newMcpServer.command) {
@@ -236,6 +380,30 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
   const handleCustomModelChange = (value) => {
     setCustomModel(value);
     setConfig({ ...config, model: value || 'custom-model' });
+  };
+
+  // Compression provider handlers
+  const handleCompressionProviderChange = (newProvider) => {
+    const providerInfo = PROVIDERS[newProvider];
+    setConfig({
+      ...config,
+      compression: {
+        ...config.compression,
+        provider: newProvider,
+        model: providerInfo.defaultModel,
+        base_url: providerInfo.defaultBaseUrl || null
+      }
+    });
+  };
+
+  const handleCompressionModelChange = (newModel) => {
+    setConfig({
+      ...config,
+      compression: {
+        ...config.compression,
+        model: newModel
+      }
+    });
   };
 
   const currentProvider = PROVIDERS[config.provider];
@@ -342,68 +510,105 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
               </div>
             )}
 
-            {config.provider === 'google' && (
+            {providerInfo.requiresApiKey && (
               <div className="form-group">
-                <label>Google API 密钥 (可选)</label>
+                <label>{providerInfo.apiKeyLabel} (可选)</label>
                 <input
                   type="password"
-                  value={config.google_api_key || ''}
-                  onChange={(e) => setConfig({ ...config, google_api_key: e.target.value || null })}
+                  value={config[providerInfo.apiKeyField] || ''}
+                  onChange={(e) => setConfig({ ...config, [providerInfo.apiKeyField]: e.target.value || null })}
                   placeholder="留空则使用 .env 文件中的全局 API 密钥"
                 />
                 <small className="form-hint">
-                  单个 Agent 的 API 密钥会覆盖全局 GOOGLE_API_KEY 设置
+                  单个 Agent 的 API 密钥会覆盖全局设置
                 </small>
               </div>
             )}
 
-            {config.provider === 'openai' && (
+            {(providerInfo.defaultBaseUrl && !isLocalProvider) && (
               <div className="form-group">
-                <label>OpenAI API 密钥 (可选)</label>
+                <label>API 基础 URL (可选)</label>
                 <input
-                  type="password"
-                  value={config.openai_api_key || ''}
-                  onChange={(e) => setConfig({ ...config, openai_api_key: e.target.value || null })}
-                  placeholder="留空则使用 .env 文件中的全局 API 密钥"
+                  type="text"
+                  value={config.api_base_url || ''}
+                  onChange={(e) => setConfig({ ...config, api_base_url: e.target.value || null })}
+                  placeholder={providerInfo.defaultBaseUrl}
                 />
                 <small className="form-hint">
-                  单个 Agent 的 API 密钥会覆盖全局 OPENAI_API_KEY 设置
-                </small>
-              </div>
-            )}
-
-            {config.provider === 'deepseek' && (
-              <div className="form-group">
-                <label>DeepSeek API 密钥 (可选)</label>
-                <input
-                  type="password"
-                  value={config.openai_api_key || ''}
-                  onChange={(e) => setConfig({ ...config, openai_api_key: e.target.value || null })}
-                  placeholder="留空则使用 .env 文件中的全局 API 密钥"
-                />
-                <small className="form-hint">
-                  单个 Agent 的 API 密钥会覆盖全局 OPENAI_API_KEY 设置
+                  留空则使用默认端点: {providerInfo.defaultBaseUrl}
                 </small>
               </div>
             )}
 
             {isLocalProvider && (
-              <div className="form-group">
-                <label>API 基础 URL *</label>
-                <input
-                  type="text"
-                  value={config.api_base_url || ''}
-                  onChange={(e) => setConfig({ ...config, api_base_url: e.target.value || null })}
-                  placeholder={providerInfo.defaultBaseUrl || 'http://localhost:8080'}
-                  required
-                />
-                <small className="form-hint">
-                  {providerInfo.defaultBaseUrl 
-                    ? `默认值: ${providerInfo.defaultBaseUrl}请添加“/v1”`
-                    : '输入您的 OpenAI 兼容 API 端点的基础 URL'}
-                </small>
+              <div className="custom-api-config">
+                <div className="form-group">
+                  <label>API 基础 URL *</label>
+                  <input
+                    type="text"
+                    value={config.api_base_url || ''}
+                    onChange={(e) => setConfig({ ...config, api_base_url: e.target.value || null })}
+                    placeholder={providerInfo.defaultBaseUrl || 'http://localhost:8080/v1'}
+                    required
+                  />
+                  <small className="form-hint">
+                    {providerInfo.defaultBaseUrl 
+                      ? `默认值: ${providerInfo.defaultBaseUrl}`
+                      : '输入您的 OpenAI 兼容 API 端点的基础 URL'}
+                  </small>
+                </div>
+                
+                <div className="form-group">
+                  <label>API 密钥 (可选)</label>
+                  <input
+                    type="password"
+                    value={config.openai_api_key || ''}
+                    onChange={(e) => setConfig({ ...config, openai_api_key: e.target.value || null })}
+                    placeholder="本地模型可留空或填任意字符串"
+                  />
+                  <small className="form-hint">
+                    某些服务（如 Together AI）需要 API 密钥，本地模型通常不需要
+                  </small>
+                </div>
+
+                {providerInfo.description && (
+                  <div className="form-hint-box">
+                    <strong>支持的服务：</strong>{providerInfo.description}
+                  </div>
+                )}
+
+
               </div>
             )}
+
+            <div className="form-group">
+              <label>测试模型连接</label>
+              <button
+                type="button"
+                className="btn btn-primary btn-block"
+                onClick={handleTestConnection}
+                disabled={isTesting}
+              >
+                {isTesting ? (
+                  <span className="btn-loading">
+                    <span className="spinner"></span>
+                    测试中...
+                  </span>
+                ) : (
+                  '测试连接'
+                )}
+              </button>
+              {testResult && (
+                <div className={`test-result ${testResult.success ? 'success' : 'error'}`}>
+                  {testResult.success ? (
+                    <span className="result-icon">✓</span>
+                  ) : (
+                    <span className="result-icon">✗</span>
+                  )}
+                  {testResult.message}
+                </div>
+              )}
+            </div>
 
             <div className="form-group">
               <label>系统提示词</label>
@@ -549,22 +754,50 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
             {(config.compression?.enabled || false) && (
               <div className="compression-settings">
                 <div className="form-group">
-                  <label>压缩模型</label>
+                  <label>压缩模型提供商 *</label>
                   <select
-                    value={config.compression?.model || 'gpt-4o-mini'}
-                    onChange={(e) => setConfig({ 
-                      ...config, 
-                      compression: { 
-                        ...config.compression, 
-                        model: e.target.value 
-                      } 
-                    })}
+                    value={config.compression?.provider || 'deepseek'}
+                    onChange={(e) => handleCompressionProviderChange(e.target.value)}
                   >
-                    {COMPRESSION_MODELS.map(model => (
-                      <option key={model.value} value={model.value}>{model.label}</option>
+                    {Object.entries(PROVIDERS).map(([key, provider]) => (
+                      <option key={key} value={key}>{provider.label}</option>
                     ))}
                   </select>
                 </div>
+
+                {(() => {
+                  const compressionProvider = PROVIDERS[config.compression?.provider];
+                  if (!compressionProvider) return null;
+                  
+                  if (!compressionProvider.isLocal) {
+                    return (
+                      <div className="form-group">
+                        <label>压缩模型 *</label>
+                        <select
+                          value={config.compression?.model || compressionProvider.defaultModel}
+                          onChange={(e) => handleCompressionModelChange(e.target.value)}
+                        >
+                          {compressionProvider.models?.map(model => (
+                            <option key={model.value} value={model.value}>{model.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                    );
+                  } else {
+                    return (
+                      <div className="form-group">
+                        <label>压缩模型名称 *</label>
+                        <input
+                          type="text"
+                          value={config.compression?.model || ''}
+                          onChange={(e) => handleCompressionModelChange(e.target.value)}
+                          placeholder="输入模型名称 (例如: google/gemma-3-4b, llama2, mistral 等)"
+                          required
+                        />
+                      </div>
+                    );
+                  }
+                })()}
 
                 <div className="form-group">
                   <label>压缩 API 密钥 (可选)</label>
@@ -586,20 +819,32 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
                 </div>
 
                 <div className="form-group">
-                  <label>压缩 API 基础 URL (可选)</label>
-                  <input
-                    type="text"
-                    value={config.compression?.base_url || ''}
-                    onChange={(e) => setConfig({ 
-                      ...config, 
-                      compression: { 
-                        ...config.compression, 
-                        base_url: e.target.value || null 
-                      } 
-                    })}
-                    placeholder="例如: https://api.deepseek.com/v1"
-                  />
-                  <small className="form-hint">用于指定非默认的 API 端点</small>
+                  <label>测试压缩模型连接</label>
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-block"
+                    onClick={handleCompressionTestConnection}
+                    disabled={isCompressionTesting}
+                  >
+                    {isCompressionTesting ? (
+                      <span className="btn-loading">
+                        <span className="spinner"></span>
+                        测试中...
+                      </span>
+                    ) : (
+                      '测试连接'
+                    )}
+                  </button>
+                  {compressionTestResult && (
+                    <div className={`test-result ${compressionTestResult.success ? 'success' : 'error'}`}>
+                      {compressionTestResult.success ? (
+                        <span className="result-icon">✓</span>
+                      ) : (
+                        <span className="result-icon">✗</span>
+                      )}
+                      {compressionTestResult.message}
+                    </div>
+                  )}
                 </div>
 
                 <div className="form-row">

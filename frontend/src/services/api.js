@@ -37,6 +37,12 @@ export const agentService = {
     return response.data;
   },
 
+  // Test model connection
+  async testConnection(config) {
+    const response = await api.post('/api/agents/test-connection', config);
+    return response.data;
+  },
+
   // Agent communication
   async sendMessage(agentId, message, context = null, stream = false) {
     const response = await api.post('/api/agents/message', {

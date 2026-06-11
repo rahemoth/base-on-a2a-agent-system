@@ -10,18 +10,28 @@ class Settings(BaseSettings):
     
     # API Keys
     google_api_key: Optional[str] = None
-    anthropic_api_key: Optional[str] = None
     openai_api_key: Optional[str] = None
+    anthropic_api_key: Optional[str] = None
+    kimi_api_key: Optional[str] = None
+    mimo_api_key: Optional[str] = None
+    minimax_api_key: Optional[str] = None
+    zhipu_api_key: Optional[str] = None
+    qwen_api_key: Optional[str] = None
     
     # Compression Model Configuration (for RAG context compression)
     compression_api_key: Optional[str] = None
     compression_base_url: Optional[str] = None
-    compression_model: str = "gpt-4o-mini"
+    compression_model: str = "gpt-5.4"
     compression_max_tokens: int = 500
     compression_temperature: float = 0.3
     
-    # OpenAI Configuration (supports OpenAI-compatible APIs like LM Studio)
+    # API Base URLs
     openai_base_url: Optional[str] = None  # e.g., http://localhost:1234/v1 for LM Studio
+    kimi_base_url: Optional[str] = None
+    mimo_base_url: Optional[str] = None
+    minimax_base_url: Optional[str] = None
+    zhipu_base_url: Optional[str] = None
+    qwen_base_url: Optional[str] = None
     
     # Server Configuration
     host: str = "0.0.0.0"

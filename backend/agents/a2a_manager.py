@@ -69,7 +69,18 @@ class A2AAgentManager:
             config=config,
             google_api_key=config.google_api_key or settings.google_api_key,
             openai_api_key=config.openai_api_key or settings.openai_api_key,
+            anthropic_api_key=config.anthropic_api_key or settings.anthropic_api_key,
+            kimi_api_key=config.kimi_api_key or settings.kimi_api_key,
+            mimo_api_key=config.mimo_api_key or settings.mimo_api_key,
+            minimax_api_key=config.minimax_api_key or settings.minimax_api_key,
+            zhipu_api_key=config.zhipu_api_key or settings.zhipu_api_key,
+            qwen_api_key=config.qwen_api_key or settings.qwen_api_key,
             openai_base_url=settings.openai_base_url,
+            kimi_base_url=settings.kimi_base_url,
+            mimo_base_url=settings.mimo_base_url,
+            minimax_base_url=settings.minimax_base_url,
+            zhipu_base_url=settings.zhipu_base_url,
+            qwen_base_url=settings.qwen_base_url,
         )
         
         # Initialize MCP if configured
@@ -150,7 +161,18 @@ class A2AAgentManager:
             config=config,
             google_api_key=config.google_api_key or settings.google_api_key,
             openai_api_key=config.openai_api_key or settings.openai_api_key,
+            anthropic_api_key=config.anthropic_api_key or settings.anthropic_api_key,
+            kimi_api_key=config.kimi_api_key or settings.kimi_api_key,
+            mimo_api_key=config.mimo_api_key or settings.mimo_api_key,
+            minimax_api_key=config.minimax_api_key or settings.minimax_api_key,
+            zhipu_api_key=config.zhipu_api_key or settings.zhipu_api_key,
+            qwen_api_key=config.qwen_api_key or settings.qwen_api_key,
             openai_base_url=settings.openai_base_url,
+            kimi_base_url=settings.kimi_base_url,
+            mimo_base_url=settings.mimo_base_url,
+            minimax_base_url=settings.minimax_base_url,
+            zhipu_base_url=settings.zhipu_base_url,
+            qwen_base_url=settings.qwen_base_url,
         )
         
         await executor.initialize_mcp()

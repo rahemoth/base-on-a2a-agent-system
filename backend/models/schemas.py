@@ -17,13 +17,15 @@ class AgentStatus(str, Enum):
 
 class ModelProvider(str, Enum):
     """Model provider enumeration"""
-    GOOGLE = "google"
-    OPENAI = "openai"
     DEEPSEEK = "deepseek"
-    LMSTUDIO = "lmstudio"
-    LOCALAI = "localai"
-    OLLAMA = "ollama"
-    TEXTGEN_WEBUI = "textgen-webui"
+    KIMI = "kimi"
+    MIMO = "mimo"
+    MINIMAX = "minimax"
+    GLM = "glm"
+    CLAUDE = "claude"
+    GPT = "gpt"
+    GEMINI = "gemini"
+    QWEN = "qwen"
     CUSTOM = "custom"
 
 
@@ -51,13 +53,19 @@ class AgentConfig(BaseModel):
     """Agent configuration model"""
     name: str = Field(..., description="Agent name")
     description: str = Field("", description="Agent description")
-    provider: ModelProvider = Field(ModelProvider.GOOGLE, description="Model provider")
-    model: str = Field("gemini-2.0-flash-exp", description="Model to use")
+    provider: ModelProvider = Field(ModelProvider.DEEPSEEK, description="Model provider")
+    model: str = Field("deepseek-v4-pro", description="Model to use")
     system_prompt: Optional[str] = Field(None, description="System prompt for the agent")
     temperature: float = Field(0.7, ge=0.0, le=2.0, description="Temperature for generation")
     max_tokens: Optional[int] = Field(None, description="Maximum tokens to generate")
     google_api_key: Optional[str] = Field(None, description="Google API key for this agent (overrides global setting)")
     openai_api_key: Optional[str] = Field(None, description="OpenAI API key for this agent (overrides global setting)")
+    anthropic_api_key: Optional[str] = Field(None, description="Anthropic API key for this agent (overrides global setting)")
+    kimi_api_key: Optional[str] = Field(None, description="Kimi API key for this agent (overrides global setting)")
+    mimo_api_key: Optional[str] = Field(None, description="MiMo API key for this agent (overrides global setting)")
+    minimax_api_key: Optional[str] = Field(None, description="MiniMax API key for this agent (overrides global setting)")
+    zhipu_api_key: Optional[str] = Field(None, description="Zhipu API key for this agent (overrides global setting)")
+    qwen_api_key: Optional[str] = Field(None, description="Qwen API key for this agent (overrides global setting)")
     openai_base_url: Optional[str] = Field(None, description="Custom OpenAI-compatible API base URL (e.g., http://localhost:1234/v1 for LMStudio)")
     api_base_url: Optional[str] = Field(None, description="API base URL for local/custom providers")
     mcp_servers: List[MCPServerConfig] = Field(default_factory=list, description="MCP servers configuration")

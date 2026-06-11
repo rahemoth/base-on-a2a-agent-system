@@ -3,7 +3,7 @@ FastAPI routes for agent management
 """
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
-from typing import List, AsyncGenerator
+from typing import List, AsyncGenerator, Dict, Any
 import json
 import asyncio
 
@@ -13,8 +13,10 @@ from backend.models import (
     AgentMessage,
     AgentCollaboration,
     AgentUpdate,
+    AgentConfig,
 )
 from backend.agents import agent_manager
+from backend.utils.model_test import test_model_connection
 
 router = APIRouter(prefix="/api/agents", tags=["agents"])
 
@@ -185,3 +187,17 @@ async def collaborate_stream(collaboration: AgentCollaboration):
             "X-Accel-Buffering": "no",
         }
     )
+
+
+@router.post("/test-connection")
+async def test_agent_connection(config: AgentConfig) -> Dict[str, Any]:
+    """
+    Test if the agent configuration can connect to the model API.
+    
+    This endpoint allows testing model connectivity without creating an agent.
+    """
+    try:
+        result = await test_model_connection(config)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

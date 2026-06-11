@@ -39,13 +39,39 @@ class LLMAgentExecutor(AgentExecutor):
         config: AgentConfig,
         google_api_key: Optional[str] = None,
         openai_api_key: Optional[str] = None,
+        anthropic_api_key: Optional[str] = None,
+        kimi_api_key: Optional[str] = None,
+        mimo_api_key: Optional[str] = None,
+        minimax_api_key: Optional[str] = None,
+        zhipu_api_key: Optional[str] = None,
+        qwen_api_key: Optional[str] = None,
         openai_base_url: Optional[str] = None,
+        kimi_base_url: Optional[str] = None,
+        mimo_base_url: Optional[str] = None,
+        minimax_base_url: Optional[str] = None,
+        zhipu_base_url: Optional[str] = None,
+        qwen_base_url: Optional[str] = None,
     ):
         self.agent_id = agent_id
         self.config = config
+        
+        # API Keys
         self.google_api_key = google_api_key
         self.openai_api_key = openai_api_key
+        self.anthropic_api_key = anthropic_api_key
+        self.kimi_api_key = kimi_api_key
+        self.mimo_api_key = mimo_api_key
+        self.minimax_api_key = minimax_api_key
+        self.zhipu_api_key = zhipu_api_key
+        self.qwen_api_key = qwen_api_key
+        
+        # Base URLs
         self.openai_base_url = openai_base_url
+        self.kimi_base_url = kimi_base_url
+        self.mimo_base_url = mimo_base_url
+        self.minimax_base_url = minimax_base_url
+        self.zhipu_base_url = zhipu_base_url
+        self.qwen_base_url = qwen_base_url
         
         # Initialize LLM clients
         self.google_client = None
@@ -65,55 +91,107 @@ class LLMAgentExecutor(AgentExecutor):
         """Initialize LLM clients based on configuration"""
         logger.info(f"Agent {self.agent_id}: Initializing clients for provider: {self.config.provider.value}")
         
-        if self.config.provider == ModelProvider.GOOGLE:
-            if self.google_api_key:
-                self.google_client = genai.Client(api_key=self.google_api_key)
+        if self.config.provider == ModelProvider.GEMINI:
+            api_key = self.config.google_api_key or self.google_api_key
+            if api_key:
+                self.google_client = genai.Client(api_key=api_key)
                 logger.info(f"Agent {self.agent_id}: Google client initialized")
             else:
                 logger.warning(f"Agent {self.agent_id}: Google API key not provided")
-        elif self.config.provider in [ModelProvider.OPENAI, ModelProvider.DEEPSEEK,
-                                      ModelProvider.LMSTUDIO, 
-                                      ModelProvider.LOCALAI, ModelProvider.OLLAMA, 
-                                      ModelProvider.TEXTGEN_WEBUI, ModelProvider.CUSTOM]:
-            # For OpenAI and all local/custom providers using OpenAI-compatible API
-            api_key = self.openai_api_key or "local-llm-key-not-required"
+        
+        elif self.config.provider == ModelProvider.GPT:
+            api_key = self.config.openai_api_key or self.openai_api_key
+            base_url = self.config.api_base_url or self.openai_base_url or "https://api.openai.com/v1"
             
-            # Determine base URL based on provider
+            if api_key:
+                self.openai_client = AsyncOpenAI(api_key=api_key, base_url=base_url)
+                logger.info(f"Agent {self.agent_id}: GPT client initialized with base_url: {base_url}")
+            else:
+                logger.warning(f"Agent {self.agent_id}: OpenAI API key not provided")
+        
+        elif self.config.provider == ModelProvider.CLAUDE:
+            api_key = self.config.anthropic_api_key or self.anthropic_api_key
+            if api_key:
+                self.openai_client = AsyncOpenAI(api_key=api_key, base_url="https://api.anthropic.com/v1")
+                logger.info(f"Agent {self.agent_id}: Claude client initialized")
+            else:
+                logger.warning(f"Agent {self.agent_id}: Anthropic API key not provided")
+        
+        elif self.config.provider == ModelProvider.DEEPSEEK:
+            api_key = self.config.openai_api_key or self.openai_api_key
+            base_url = self.config.api_base_url or self.openai_base_url or "https://api.deepseek.com/v1"
+            
+            if api_key:
+                self.openai_client = AsyncOpenAI(api_key=api_key, base_url=base_url)
+                logger.info(f"Agent {self.agent_id}: DeepSeek client initialized with base_url: {base_url}")
+            else:
+                logger.warning(f"Agent {self.agent_id}: DeepSeek API key not provided")
+        
+        elif self.config.provider == ModelProvider.KIMI:
+            api_key = self.config.kimi_api_key or self.kimi_api_key
+            base_url = self.config.api_base_url or self.kimi_base_url or "https://api.moonshot.cn/v1"
+            
+            if api_key:
+                self.openai_client = AsyncOpenAI(api_key=api_key, base_url=base_url)
+                logger.info(f"Agent {self.agent_id}: Kimi client initialized with base_url: {base_url}")
+            else:
+                logger.warning(f"Agent {self.agent_id}: Kimi API key not provided")
+        
+        elif self.config.provider == ModelProvider.MIMO:
+            api_key = self.config.mimo_api_key or self.mimo_api_key
+            base_url = self.config.api_base_url or self.mimo_base_url or "https://api.xiaomi.com/v1"
+            
+            if api_key:
+                self.openai_client = AsyncOpenAI(api_key=api_key, base_url=base_url)
+                logger.info(f"Agent {self.agent_id}: MiMo client initialized with base_url: {base_url}")
+            else:
+                logger.warning(f"Agent {self.agent_id}: MiMo API key not provided")
+        
+        elif self.config.provider == ModelProvider.MINIMAX:
+            api_key = self.config.minimax_api_key or self.minimax_api_key
+            base_url = self.config.api_base_url or self.minimax_base_url or "https://api.minimax.chat/v1/text/chatcompletion"
+            
+            if api_key:
+                self.openai_client = AsyncOpenAI(api_key=api_key, base_url=base_url)
+                logger.info(f"Agent {self.agent_id}: MiniMax client initialized with base_url: {base_url}")
+            else:
+                logger.warning(f"Agent {self.agent_id}: MiniMax API key not provided")
+        
+        elif self.config.provider == ModelProvider.GLM:
+            api_key = self.config.zhipu_api_key or self.zhipu_api_key
+            base_url = self.config.api_base_url or self.zhipu_base_url or "https://open.bigmodel.cn/api/paas/v4"
+            
+            if api_key:
+                self.openai_client = AsyncOpenAI(api_key=api_key, base_url=base_url)
+                logger.info(f"Agent {self.agent_id}: GLM client initialized with base_url: {base_url}")
+            else:
+                logger.warning(f"Agent {self.agent_id}: Zhipu API key not provided")
+        
+        elif self.config.provider == ModelProvider.QWEN:
+            api_key = self.config.qwen_api_key or self.qwen_api_key
+            base_url = self.config.api_base_url or self.qwen_base_url or "https://dashscope.aliyuncs.com/api/text-generation/v1"
+            
+            if api_key:
+                self.openai_client = AsyncOpenAI(api_key=api_key, base_url=base_url)
+                logger.info(f"Agent {self.agent_id}: Qwen client initialized with base_url: {base_url}")
+            else:
+                logger.warning(f"Agent {self.agent_id}: Qwen API key not provided")
+        
+        elif self.config.provider == ModelProvider.CUSTOM:
+            # Custom/OpenAI-compatible API (supports LM Studio, Ollama, LocalAI, etc.)
+            api_key = self.config.openai_api_key or self.openai_api_key or "local-llm-key-not-required"
+            
             if self.config.api_base_url:
                 base_url = self.config.api_base_url
-
             elif self.config.openai_base_url:
-                # Backward compatibility
                 base_url = self.config.openai_base_url
-
-            elif self.config.provider == ModelProvider.OPENAI:
-                # Use official OpenAI API (no custom base URL)
-                base_url = None
-
-            elif self.config.provider == ModelProvider.DEEPSEEK:
-                # DeepSeek API endpoint
-                base_url = "https://api.deepseek.com/v1"
-
             else:
-                # Default URLs for each local provider
-                default_urls = {
-                    ModelProvider.LMSTUDIO: "http://localhost:1234/v1",
-                    ModelProvider.LOCALAI: "http://localhost:8080/v1",
-                    ModelProvider.OLLAMA: "http://localhost:11434/v1",
-                    ModelProvider.TEXTGEN_WEBUI: "http://localhost:5000/v1",
-                    ModelProvider.CUSTOM: None
-                }
-                base_url = default_urls.get(self.config.provider)
-
-            if base_url:
-                self.openai_client = AsyncOpenAI(
-                    api_key=api_key,
-                    base_url=base_url
-                )
-                logger.info(f"Agent {self.agent_id}: OpenAI client initialized with base_url: {base_url}")
-            else:
-                self.openai_client = AsyncOpenAI(api_key=api_key)
-                logger.info(f"Agent {self.agent_id}: OpenAI client initialized with default endpoint")
+                logger.error(f"Agent {self.agent_id}: Base URL required for custom provider")
+                return
+            
+            self.openai_client = AsyncOpenAI(api_key=api_key, base_url=base_url)
+            logger.info(f"Agent {self.agent_id}: Custom client initialized with base_url: {base_url}")
+        
         else:
             logger.error(f"Agent {self.agent_id}: Unsupported provider: {self.config.provider}")
     
@@ -257,12 +335,13 @@ class LLMAgentExecutor(AgentExecutor):
                 # No API key configured, return mock response
                 logger.warning(f"Agent {self.agent_id}: No API key configured, returning mock response")
                 response_text = f"[Mock Response] I have processed your request: '{text_content}'. This is a simulated response since no LLM API key has been configured."
-            elif self.config.provider == ModelProvider.GOOGLE:
+            elif self.config.provider == ModelProvider.GEMINI:
                 response_text = await self._generate_google(text_content, request_context, cognitive_context)
-            elif self.config.provider in [ModelProvider.OPENAI, ModelProvider.DEEPSEEK,
-                                          ModelProvider.LMSTUDIO, 
-                                          ModelProvider.LOCALAI, ModelProvider.OLLAMA, 
-                                          ModelProvider.TEXTGEN_WEBUI, ModelProvider.CUSTOM]:
+            elif self.config.provider in [ModelProvider.GPT, ModelProvider.CLAUDE,
+                                          ModelProvider.DEEPSEEK, ModelProvider.KIMI,
+                                          ModelProvider.MIMO, ModelProvider.MINIMAX,
+                                          ModelProvider.GLM, ModelProvider.QWEN,
+                                          ModelProvider.CUSTOM]:
                 response_text = await self._generate_openai(text_content, request_context, cognitive_context)
             else:
                 raise ValueError(f"Unsupported provider: {self.config.provider}")
