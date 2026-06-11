@@ -596,66 +596,59 @@ class LLMAgentExecutor(AgentExecutor):
         """Build cognitive context with RAG retrieval from long-term memory"""
         context_parts = []
         
-        # RAG Retrieval - Search long-term memory for relevant information
-        print("\n[RAG RETRIEVAL]")
+        # RAG Retrieval - Semantic search
+        print("\n[RAG SEMANTIC SEARCH]")
         print("-"*40)
         print(f"  Query: {query_text}")
         
-        # Search long-term memory
-        relevant_memories = await self.memory.search_long_term_memory(
-            memory_type=None,  # Search all memory types
-            limit=20,
-            min_importance=0.0  # Lower threshold to get more results
+        # Semantic search using vector similarity
+        semantic_results = await self.memory.semantic_search(
+            query=query_text,
+            top_k=5,
+            min_similarity=0.2
         )
         
-        print(f"  Found {len(relevant_memories)} memories in database")
+        print(f"  Found {len(semantic_results)} semantic matches")
         
-        # Filter memories that might be relevant to the query
-        query_keywords = set()
-        # Extract meaningful keywords from query
-        for word in query_text:
-            if len(word) >= 2 and word not in {'的', '了', '是', '在', '我', '你', '他', '她', '它', '们', '这', '那', '一', '不', '有', '和', '与', '或', '但', '而', '把', '被', '让', '给', '向', '从', '到', '对', '为', '会', '能', '可以', '要', '想', '做', '说', '看', '来', '去', '上', '下', '里', '外', '中'}:
-                query_keywords.add(word)
+        # Also search for role memories (always include)
+        role_memories = await self.memory.search_long_term_memory(
+            memory_type="role",
+            limit=3,
+            min_importance=0.0
+        )
         
-        # Also add the full query as a keyword
-        query_keywords.add(query_text)
-        
-        print(f"  Keywords: {query_keywords}")
-        
+        # Combine results (role memories + semantic matches)
         scored_memories = []
-        for mem in relevant_memories:
-            content = mem.get("content", "")
-            metadata = mem.get("metadata", {}) or {}
-            
-            # Simple keyword matching score
-            match_score = 0
-            for keyword in query_keywords:
-                if keyword in content:
-                    match_score += 1
-            
-            # Check for role memories (highest priority)
-            if mem.get("memory_type") == "role":
-                match_score += 10  # Role memories are always relevant
-            
-            # Check metadata for entities
-            if "entities" in metadata:
-                for entity in metadata["entities"]:
-                    if entity in query_text or query_text in entity:
-                        match_score += 2
-            
-            # Check for role in metadata
-            if "role" in metadata:
-                match_score += 5
-            
-            # Include high-importance memories regardless of keyword match
-            importance = mem.get("importance", 0)
-            if match_score > 0 or importance >= 0.5:
-                scored_memories.append((match_score, mem))
         
-        # Sort by relevance score, then by timestamp (newest first)
-        scored_memories.sort(key=lambda x: (x[0], x[1].get("timestamp", "")), reverse=True)
+        # Add role memories with high priority
+        for mem in role_memories:
+            scored_memories.append({
+                "content": mem.get("content", ""),
+                "memory_type": "role",
+                "importance": mem.get("importance", 1.0),
+                "similarity": 1.0,  # Role memories always relevant
+                "source": "role"
+            })
         
-        print(f"  Relevant memories: {len(scored_memories)}")
+        # Add semantic matches
+        for result in semantic_results:
+            # Skip if already in role memories
+            if any(r.get("content") == result.get("content") for r in scored_memories):
+                continue
+                
+            scored_memories.append({
+                "content": result.get("content", ""),
+                "memory_type": result.get("memory_type", ""),
+                "importance": result.get("importance", 0.5),
+                "similarity": result.get("similarity", 0),
+                "source": "semantic"
+            })
+        
+        # Sort by similarity * importance
+        scored_memories.sort(
+            key=lambda x: x.get("similarity", 0) * x.get("importance", 0.5),
+            reverse=True
+        )
         
         # Add perception insights
         context_parts.append(f"[Internal Analysis]")
@@ -680,15 +673,16 @@ class LLMAgentExecutor(AgentExecutor):
             context_parts.append("\n[RAG Retrieved Memories]")
             context_parts.append("Use these memories to maintain consistency:")
             
-            for i, (score, mem) in enumerate(scored_memories[:3]):  # Top 3 relevant memories
+            for i, mem in enumerate(scored_memories[:5]):  # Top 5
                 content = mem.get("content", "")
-                importance = mem.get("importance", 0)
+                similarity = mem.get("similarity", 0)
                 mem_type = mem.get("memory_type", "unknown")
+                source = mem.get("source", "unknown")
                 
-                print(f"  [{i+1}] Type: {mem_type} | Score: {score} | Importance: {importance}")
+                print(f"  [{i+1}] Type: {mem_type} | Similarity: {similarity:.2f} | Source: {source}")
                 print(f"      {content[:60]}...")
                 
-                context_parts.append(f"\nMemory {i+1} ({mem_type}):")
+                context_parts.append(f"\nMemory {i+1} ({mem_type}, similarity: {similarity:.2f}):")
                 context_parts.append(f"  {content}")
             
             print("-"*40)
