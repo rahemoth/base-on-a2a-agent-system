@@ -17,13 +17,14 @@ from backend.agents.a2a_executor import LLMAgentExecutor
 from backend.models import AgentConfig, AgentStatus, AgentResponse
 from backend.config import settings
 from backend.utils.a2a_utils import extract_text_from_parts
+from backend.database_manager import db_manager
 
 # Initialize logger at module level
 logger = logging.getLogger(__name__)
 
 
 class A2AAgentManager:
-    """Manager for A2A-compliant agents"""
+    """Manager for A2A-compliant agents with database persistence"""
     
     def __init__(self):
         self.agents: Dict[str, LLMAgentExecutor] = {}
@@ -31,6 +32,94 @@ class A2AAgentManager:
         self.request_handlers: Dict[str, DefaultRequestHandler] = {}
         self.task_stores: Dict[str, InMemoryTaskStore] = {}
         self.agent_metadata: Dict[str, Dict] = {}
+        self._initialized = False
+    
+    async def initialize(self):
+        """Initialize database and restore agents"""
+        if self._initialized:
+            return
+        
+        try:
+            # Initialize database
+            await db_manager.initialize()
+            
+            # Restore agents from database
+            await self._restore_agents_from_db()
+            
+            self._initialized = True
+            logger.info("A2A Agent Manager initialized with database persistence")
+        except Exception as e:
+            logger.error(f"Error initializing agent manager: {e}")
+    
+    async def _restore_agents_from_db(self):
+        """Restore agents from database on startup"""
+        try:
+            agents_data = await db_manager.list_agents()
+            logger.info(f"Restoring {len(agents_data)} agents from database")
+            
+            for agent_data in agents_data:
+                agent_id = agent_data["id"]
+                config_data = agent_data["config"]
+                
+                try:
+                    # Recreate AgentConfig
+                    config = AgentConfig(**config_data)
+                    
+                    # Recreate executor
+                    executor = LLMAgentExecutor(
+                        agent_id=agent_id,
+                        config=config,
+                        google_api_key=config.google_api_key or settings.google_api_key,
+                        openai_api_key=config.openai_api_key or settings.openai_api_key,
+                        anthropic_api_key=config.anthropic_api_key or settings.anthropic_api_key,
+                        kimi_api_key=config.kimi_api_key or settings.kimi_api_key,
+                        mimo_api_key=config.mimo_api_key or settings.mimo_api_key,
+                        minimax_api_key=config.minimax_api_key or settings.minimax_api_key,
+                        zhipu_api_key=config.zhipu_api_key or settings.zhipu_api_key,
+                        qwen_api_key=config.qwen_api_key or settings.qwen_api_key,
+                        openai_base_url=settings.openai_base_url,
+                        kimi_base_url=settings.kimi_base_url,
+                        mimo_base_url=settings.mimo_base_url,
+                        minimax_base_url=settings.minimax_base_url,
+                        zhipu_base_url=settings.zhipu_base_url,
+                        qwen_base_url=settings.qwen_base_url,
+                    )
+                    
+                    await executor.initialize_mcp()
+                    
+                    # Recreate agent card
+                    agent_card = self._create_agent_card(agent_id, config)
+                    
+                    # Recreate task store and queue manager
+                    task_store = InMemoryTaskStore()
+                    queue_manager = InMemoryQueueManager()
+                    
+                    # Recreate request handler
+                    request_handler = DefaultRequestHandler(
+                        agent_executor=executor,
+                        agent_card=agent_card,
+                        task_store=task_store,
+                        queue_manager=queue_manager,
+                    )
+                    
+                    # Store in memory
+                    self.agents[agent_id] = executor
+                    self.agent_cards[agent_id] = agent_card
+                    self.request_handlers[agent_id] = request_handler
+                    self.task_stores[agent_id] = task_store
+                    self.agent_metadata[agent_id] = {
+                        "config": config,
+                        "created_at": datetime.fromisoformat(agent_data["created_at"]) if agent_data.get("created_at") else datetime.now(timezone.utc),
+                        "updated_at": datetime.fromisoformat(agent_data["updated_at"]) if agent_data.get("updated_at") else datetime.now(timezone.utc),
+                    }
+                    
+                    logger.info(f"Restored agent: {agent_id} ({config.name})")
+                except Exception as e:
+                    logger.error(f"Error restoring agent {agent_id}: {e}")
+            
+            logger.info(f"Successfully restored {len(self.agents)} agents")
+        except Exception as e:
+            logger.error(f"Error restoring agents from database: {e}")
     
     def _create_agent_card(self, agent_id: str, config: AgentConfig) -> types.AgentCard:
         """Create an A2A agent card for the agent"""
@@ -101,7 +190,7 @@ class A2AAgentManager:
             queue_manager=queue_manager,
         )
         
-        # Store everything
+        # Store everything in memory
         self.agents[agent_id] = executor
         self.agent_cards[agent_id] = agent_card
         self.request_handlers[agent_id] = request_handler
@@ -111,6 +200,10 @@ class A2AAgentManager:
             "created_at": datetime.now(timezone.utc),
             "updated_at": datetime.now(timezone.utc),
         }
+        
+        # Save to database for persistence
+        await db_manager.save_agent(agent_id, config.model_dump(), "idle")
+        logger.info(f"Agent {agent_id} saved to database")
         
         return AgentResponse(
             id=agent_id,
@@ -197,6 +290,10 @@ class A2AAgentManager:
             "updated_at": datetime.now(timezone.utc),
         }
         
+        # Update in database
+        await db_manager.save_agent(agent_id, config.model_dump(), "idle")
+        logger.info(f"Agent {agent_id} updated in database")
+        
         return AgentResponse(
             id=agent_id,
             config=config,
@@ -213,12 +310,16 @@ class A2AAgentManager:
         # Cleanup agent resources
         await self.agents[agent_id].cleanup()
         
-        # Remove from storage
+        # Remove from memory
         del self.agents[agent_id]
         del self.agent_cards[agent_id]
         del self.request_handlers[agent_id]
         del self.task_stores[agent_id]
         del self.agent_metadata[agent_id]
+        
+        # Remove from database
+        await db_manager.delete_agent(agent_id)
+        logger.info(f"Agent {agent_id} deleted from database")
         
         return True
     

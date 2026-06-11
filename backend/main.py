@@ -14,6 +14,7 @@ from backend.api.rag import router as rag_router
 from backend.config import settings
 from backend.agents.a2a_manager import a2a_agent_manager
 from backend.mcp import mcp_manager
+from backend.database_manager import db_manager
 
 
 @asynccontextmanager
@@ -21,11 +22,17 @@ async def lifespan(app: FastAPI):
     """Application lifespan manager"""
     # Startup
     print("Starting A2A Agent System...")
+    
+    # Initialize agent manager and restore agents from database
+    await a2a_agent_manager.initialize()
+    
     yield
+    
     # Shutdown
     print("Shutting down A2A Agent System...")
     await a2a_agent_manager.cleanup_all()
     await mcp_manager.close_all()
+    await db_manager.close()
 
 
 app = FastAPI(

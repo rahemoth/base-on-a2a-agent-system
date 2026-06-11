@@ -3,6 +3,7 @@ A2A Agent Executor implementation using the official a2a-sdk
 """
 import uuid
 import logging
+import aiosqlite
 from typing import Optional, Dict, Any, List
 from datetime import datetime
 
@@ -323,11 +324,38 @@ class LLMAgentExecutor(AgentExecutor):
             self.memory.update_working_memory("current_plan", execution_plan)
             self.memory.update_working_memory("decision", decision)
             
+            # PRE-STORE role assignments to long-term memory BEFORE generating response
+            # This ensures role settings are immediately available for RAG retrieval
+            detected_role = self._detect_role_assignment(text_content)
+            if detected_role:
+                # Check if user is REMOVING a role (e.g., "你不是猫娘了")
+                role_removal_patterns = ["不是", "不再是", "别当", "别做", "停止"]
+                is_role_removal = any(pattern in text_content for pattern in role_removal_patterns)
+                
+                if is_role_removal:
+                    # Store role removal with highest importance
+                    await self.memory.add_to_long_term(
+                        memory_type="role",
+                        content=f"用户撤销AI角色: {detected_role}。现在AI是普通助手。",
+                        metadata={"role": "assistant", "source": "user_removal", "removed_role": detected_role},
+                        importance=1.0
+                    )
+                    print(f"\n[ROLE REMOVED] User removed role: {detected_role}")
+                else:
+                    # Store new role assignment
+                    await self.memory.add_to_long_term(
+                        memory_type="role",
+                        content=f"用户设定AI角色为: {detected_role}",
+                        metadata={"role": detected_role, "source": "user_assignment"},
+                        importance=1.0
+                    )
+                    print(f"\n[ROLE STORED] Detected role assignment: {detected_role}")
+            
             # Generate response using LLM with enhanced context
             logger.info(f"Agent {self.agent_id}: Generating response using {self.config.provider.value} with model {self.config.model}")
             
-            # Add cognitive context to the generation
-            cognitive_context = self._build_cognitive_context(perception, reasoning, decision)
+            # Add cognitive context to the generation (with RAG retrieval)
+            cognitive_context = await self._build_cognitive_context_with_rag(perception, reasoning, decision, text_content)
             
             # Check if API key is configured
             # Get API key based on provider
@@ -385,69 +413,55 @@ class LLMAgentExecutor(AgentExecutor):
             # RAG Memory Compression - Log compressed memory output
             short_term = self.memory.get_short_term_memory()
             if short_term:
-                print("\n" + "="*80)
-                print(f"[RAG Memory Compression] Agent: {self.agent_id}")
-                print("="*80)
+                print("\n" + "="*60)
+                print(f"[MEMORY] Agent: {self.agent_id[:8]}...")
+                print("="*60)
                 
                 # Display short-term memory (hot memory)
-                print("\n📦 HOT MEMORY (Short-term - Recent Dialogue):")
-                print("-"*40)
-                for i, mem in enumerate(short_term[-5:]):  # Show last 5
+                print("\n[HOT MEMORY]")
+                for i, mem in enumerate(short_term[-3:]):  # Show last 3
                     role = mem.get('role', 'unknown')
-                    content = mem.get('content', '')[:100]
-                    print(f"  [{i+1}] {role}: {content}...")
+                    content = mem.get('content', '')[:50]
+                    print(f"  {role}: {content}...")
                 
-                # Display compressed memory summary
-                print("\n🗜️ COMPRESSION STATISTICS:")
-                print("-"*40)
-                user_msgs = [m for m in short_term if m.get('role') == 'user']
-                assistant_msgs = [m for m in short_term if m.get('role') == 'assistant']
-                total_chars = sum(len(m.get('content', '')) for m in short_term)
-                print(f"  Original dialogue turns: {len(short_term)}")
-                print(f"  User messages: {len(user_msgs)}")
-                print(f"  Assistant messages: {len(assistant_msgs)}")
-                print(f"  Total characters: {total_chars}")
-                print(f"  Compression ratio: {len(short_term)} turns -> 1 summary")
+                # Display compression stats
+                print(f"\n[STATS] {len(short_term)} turns | {sum(len(m.get('content', '')) for m in short_term)} chars")
                 
-                # Display key information extraction
-                print("\n📊 INFORMATION EXTRACTION:")
-                print("-"*40)
-                print(f"  Current query: {text_content[:80]}...")
-                print(f"  Response length: {len(response_text)} chars")
-                print(f"  Complexity score: {perception.get('complexity', 'unknown')}")
-                print(f"  Detected intent: {perception.get('intent', 'unknown')}")
-                print(f"  Decision type: {decision.get('decision_type', 'unknown')}")
-                print(f"  Urgency level: {perception.get('urgency', 'unknown')}")
-                
-                # Display memory context for LLM
-                memory_context = self.memory.get_context_for_llm(max_messages=3)
-                if memory_context:
-                    print("\n🧠 MEMORY CONTEXT (sent to LLM):")
-                    print("-"*40)
-                    print(memory_context[:500])
-                
-                print("\n" + "="*80 + "\n")
+                print("="*60 + "\n")
             
-            # Save important information to long-term memory
+            # Save important information to long-term memory with REAL compression
             importance = 0.7 if perception["complexity"] == "high" else 0.5
-            await self.memory.add_to_long_term(
+            
+            # Extract key information from dialogue
+            compressed_memory = self._extract_key_information(text_content, response_text)
+            
+            # Check for similar memories and merge if found
+            merged = await self._merge_or_add_memory(
+                content=compressed_memory,
                 memory_type="conversation",
-                content=f"Q: {text_content[:CONTENT_SUMMARY_LENGTH]}... A: {response_text[:CONTENT_SUMMARY_LENGTH]}...",
+                importance=importance,
                 metadata={
                     "task_id": task_id,
                     "decision_type": decision["decision_type"],
-                    "complexity": perception["complexity"]
-                },
-                importance=importance
+                    "complexity": perception["complexity"],
+                    "intent": perception["intent"],
+                    "entities": self._extract_entities(text_content + " " + response_text)
+                }
             )
             
-            # Log long-term memory storage
-            print(f"\n💾 LONG-TERM MEMORY STORAGE:")
+            # Log long-term memory storage with compression details
+            print(f"\n[MEMORY STORAGE]")
             print("-"*40)
-            print(f"  Memory type: conversation")
-            print(f"  Importance score: {importance}")
-            print(f"  Stored content preview: Q: {text_content[:50]}... A: {response_text[:50]}...")
-            print(f"  Metadata: complexity={perception['complexity']}, decision={decision['decision_type']}")
+            print(f"  Type: conversation")
+            print(f"  Importance: {importance}")
+            print(f"  Original: {len(text_content) + len(response_text)} chars")
+            print(f"  Compressed: {len(compressed_memory)} chars")
+            print(f"  Ratio: {(len(text_content) + len(response_text)) / max(len(compressed_memory), 1):.1f}x")
+            print(f"  Content: {compressed_memory[:100]}...")
+            if merged:
+                print(f"  Action: MERGED with existing memory")
+            else:
+                print(f"  Action: ADDED new memory")
             print("")
             
             # Update task status
@@ -531,10 +545,21 @@ class LLMAgentExecutor(AgentExecutor):
         self,
         perception: Dict[str, Any],
         reasoning: Dict[str, Any],
-        decision: Dict[str, Any]
+        decision: Dict[str, Any],
+        query_text: Optional[str] = None
     ) -> str:
-        """Build cognitive context to enhance LLM generation"""
+        """Build cognitive context to enhance LLM generation with RAG retrieval"""
         context_parts = []
+        
+        # RAG Retrieval - Search long-term memory for relevant information
+        if query_text:
+            # Search for relevant memories based on keywords
+            search_keywords = query_text.lower().split()
+            
+            print("\n🔍 RAG RETRIEVAL:")
+            print("-"*40)
+            print(f"  Query: {query_text}")
+            print(f"  Search keywords: {search_keywords}")
         
         # Add perception insights
         context_parts.append(f"[Internal Analysis]")
@@ -549,10 +574,129 @@ class LLMAgentExecutor(AgentExecutor):
         if decision.get('rationale'):
             context_parts.append(f"Strategy: {decision['rationale']}")
         
-        # Add memory context
+        # Add short-term memory context
         memory_context = self.memory.get_context_for_llm(max_messages=5)
         if memory_context:
             context_parts.append(f"\n{memory_context}")
+        
+        # Add long-term memory retrieval results (RAG)
+        # This will be populated asynchronously
+        context_parts.append("\n[RAG Memory Retrieval]")
+        context_parts.append("Searching relevant memories...")
+        
+        return "\n".join(context_parts)
+    
+    async def _build_cognitive_context_with_rag(
+        self,
+        perception: Dict[str, Any],
+        reasoning: Dict[str, Any],
+        decision: Dict[str, Any],
+        query_text: str
+    ) -> str:
+        """Build cognitive context with RAG retrieval from long-term memory"""
+        context_parts = []
+        
+        # RAG Retrieval - Search long-term memory for relevant information
+        print("\n[RAG RETRIEVAL]")
+        print("-"*40)
+        print(f"  Query: {query_text}")
+        
+        # Search long-term memory
+        relevant_memories = await self.memory.search_long_term_memory(
+            memory_type=None,  # Search all memory types
+            limit=20,
+            min_importance=0.0  # Lower threshold to get more results
+        )
+        
+        print(f"  Found {len(relevant_memories)} memories in database")
+        
+        # Filter memories that might be relevant to the query
+        query_keywords = set()
+        # Extract meaningful keywords from query
+        for word in query_text:
+            if len(word) >= 2 and word not in {'的', '了', '是', '在', '我', '你', '他', '她', '它', '们', '这', '那', '一', '不', '有', '和', '与', '或', '但', '而', '把', '被', '让', '给', '向', '从', '到', '对', '为', '会', '能', '可以', '要', '想', '做', '说', '看', '来', '去', '上', '下', '里', '外', '中'}:
+                query_keywords.add(word)
+        
+        # Also add the full query as a keyword
+        query_keywords.add(query_text)
+        
+        print(f"  Keywords: {query_keywords}")
+        
+        scored_memories = []
+        for mem in relevant_memories:
+            content = mem.get("content", "")
+            metadata = mem.get("metadata", {}) or {}
+            
+            # Simple keyword matching score
+            match_score = 0
+            for keyword in query_keywords:
+                if keyword in content:
+                    match_score += 1
+            
+            # Check for role memories (highest priority)
+            if mem.get("memory_type") == "role":
+                match_score += 10  # Role memories are always relevant
+            
+            # Check metadata for entities
+            if "entities" in metadata:
+                for entity in metadata["entities"]:
+                    if entity in query_text or query_text in entity:
+                        match_score += 2
+            
+            # Check for role in metadata
+            if "role" in metadata:
+                match_score += 5
+            
+            # Include high-importance memories regardless of keyword match
+            importance = mem.get("importance", 0)
+            if match_score > 0 or importance >= 0.5:
+                scored_memories.append((match_score, mem))
+        
+        # Sort by relevance score, then by timestamp (newest first)
+        scored_memories.sort(key=lambda x: (x[0], x[1].get("timestamp", "")), reverse=True)
+        
+        print(f"  Relevant memories: {len(scored_memories)}")
+        
+        # Add perception insights
+        context_parts.append(f"[Internal Analysis]")
+        context_parts.append(f"Task Complexity: {perception.get('complexity', 'unknown')}")
+        context_parts.append(f"Intent: {perception.get('intent', 'unknown')}")
+        
+        # Add reasoning conclusion
+        if reasoning.get('conclusion'):
+            context_parts.append(f"Approach: {reasoning['conclusion']}")
+        
+        # Add decision rationale
+        if decision.get('rationale'):
+            context_parts.append(f"Strategy: {decision['rationale']}")
+        
+        # Add short-term memory context
+        memory_context = self.memory.get_context_for_llm(max_messages=5)
+        if memory_context:
+            context_parts.append(f"\n{memory_context}")
+        
+        # Add RAG retrieved memories
+        if scored_memories:
+            context_parts.append("\n[RAG Retrieved Memories]")
+            context_parts.append("Use these memories to maintain consistency:")
+            
+            for i, (score, mem) in enumerate(scored_memories[:3]):  # Top 3 relevant memories
+                content = mem.get("content", "")
+                importance = mem.get("importance", 0)
+                mem_type = mem.get("memory_type", "unknown")
+                
+                print(f"  [{i+1}] Type: {mem_type} | Score: {score} | Importance: {importance}")
+                print(f"      {content[:60]}...")
+                
+                context_parts.append(f"\nMemory {i+1} ({mem_type}):")
+                context_parts.append(f"  {content}")
+            
+            print("-"*40)
+        else:
+            context_parts.append("\n[RAG Retrieved Memories]")
+            context_parts.append("No relevant memories found yet.")
+            print("  No relevant memories found")
+            print("-"*40)
         
         return "\n".join(context_parts)
     
@@ -655,7 +799,7 @@ class LLMAgentExecutor(AgentExecutor):
         return response.text
     
     async def _generate_openai(self, text: str, request_context: RequestContext, cognitive_context: Optional[str] = None) -> str:
-        """Generate response using OpenAI"""
+        """Generate response using OpenAI with RAG memory integration"""
         if not self.openai_client:
             logger.error(f"Agent {self.agent_id}: OpenAI client not initialized")
             raise RuntimeError("OpenAI client not initialized")
@@ -671,8 +815,20 @@ class LLMAgentExecutor(AgentExecutor):
         if tools_description:
             system_prompt += tools_description
         
+        # Add RAG memory context to system prompt
         if cognitive_context:
-            system_prompt += "\n\nUse the internal analysis provided to enhance your response quality and reasoning."
+            system_prompt += f"""
+
+[IMPORTANT: RAG Memory Context]
+The following information has been retrieved from your memory system. Use this to maintain consistency and remember important details about the user and your previous interactions:
+
+{cognitive_context}
+
+Based on these memories, you should:
+1. Remember your previous role/persona if the user asks about it
+2. Maintain consistency with previous responses
+3. Reference past interactions when relevant
+4. Acknowledge when the user asks you to recall something"""
         
         messages.append({
             "role": "system",
@@ -690,14 +846,10 @@ class LLMAgentExecutor(AgentExecutor):
                         "content": msg_text
                     })
         
-        # Add current message with cognitive context
-        message_content = text
-        if cognitive_context:
-            message_content = f"{cognitive_context}\n\nUser Message: {text}"
-        
+        # Add current message
         messages.append({
             "role": "user",
-            "content": message_content
+            "content": text
         })
         
         # Configure generation
@@ -729,6 +881,331 @@ class LLMAgentExecutor(AgentExecutor):
         except Exception as e:
             logger.error(f"Agent {self.agent_id}: Failed to generate response: {str(e)}", exc_info=True)
             raise
+    
+    async def _merge_or_add_memory(
+        self,
+        content: str,
+        memory_type: str,
+        importance: float,
+        metadata: Dict[str, Any]
+    ) -> bool:
+        """
+        Check for similar memories and merge if found
+        
+        Returns:
+            True if merged with existing memory, False if added new
+        """
+        # Search for existing memories of same type
+        existing_memories = await self.memory.search_long_term_memory(
+            memory_type=memory_type,
+            limit=50,
+            min_importance=0.0
+        )
+        
+        # Extract intent and key info from new content
+        new_intent = self._extract_intent_from_memory(content)
+        new_keywords = self._extract_keywords_from_memory(content)
+        
+        # Check for similar memories
+        for mem in existing_memories:
+            existing_content = mem.get("content", "")
+            existing_intent = self._extract_intent_from_memory(existing_content)
+            existing_keywords = self._extract_keywords_from_memory(existing_content)
+            
+            # Calculate similarity score
+            similarity = self._calculate_memory_similarity(
+                new_intent, new_keywords,
+                existing_intent, existing_keywords
+            )
+            
+            # If highly similar, merge
+            if similarity >= 0.7:
+                merged_content = self._merge_memory_content(existing_content, content)
+                
+                # Update existing memory with merged content
+                await self._update_memory(
+                    memory_id=mem["id"],
+                    content=merged_content,
+                    importance=max(importance, mem.get("importance", 0))
+                )
+                
+                print(f"  [MERGED] Similarity: {similarity:.2f}")
+                print(f"    Old: {existing_content[:50]}...")
+                print(f"    New: {content[:50]}...")
+                print(f"    Merged: {merged_content[:50]}...")
+                return True
+        
+        # No similar memory found, add new
+        await self.memory.add_to_long_term(
+            memory_type=memory_type,
+            content=content,
+            metadata=metadata,
+            importance=importance
+        )
+        return False
+    
+    def _extract_intent_from_memory(self, content: str) -> str:
+        """Extract intent from memory content"""
+        # Look for intent pattern
+        if "意图:" in content:
+            start = content.find("意图:") + 3
+            end = content.find("|", start)
+            if end == -1:
+                end = min(start + 10, len(content))
+            return content[start:end].strip()
+        if "角色:" in content:
+            start = content.find("角色:") + 3
+            end = content.find("|", start)
+            if end == -1:
+                end = min(start + 10, len(content))
+            return content[start:end].strip()
+        if "身份:" in content:
+            start = content.find("身份:") + 3
+            end = content.find("|", start)
+            if end == -1:
+                end = min(start + 10, len(content))
+            return content[start:end].strip()
+        return ""
+    
+    def _extract_keywords_from_memory(self, content: str) -> set:
+        """Extract keywords from memory content"""
+        import re
+        # Extract Chinese words
+        words = re.findall(r'[\u4e00-\u9fa5]{2,4}', content)
+        # Filter stop words
+        stop_words = {'用户', '意图', '角色', '身份', 'AI', '对话', '请求', '类型', '关键', '实体'}
+        return {w for w in words if w not in stop_words and len(w) >= 2}
+    
+    def _calculate_memory_similarity(
+        self,
+        new_intent: str, new_keywords: set,
+        existing_intent: str, existing_keywords: set
+    ) -> float:
+        """Calculate similarity between two memories"""
+        score = 0.0
+        
+        # Intent match (high weight)
+        if new_intent and existing_intent:
+            if new_intent == existing_intent:
+                score += 0.5
+            elif new_intent in existing_intent or existing_intent in new_intent:
+                score += 0.3
+        
+        # Keyword overlap
+        if new_keywords and existing_keywords:
+            overlap = len(new_keywords & existing_keywords)
+            total = max(len(new_keywords | existing_keywords), 1)
+            score += 0.5 * (overlap / total)
+        
+        return min(score, 1.0)
+    
+    def _merge_memory_content(self, existing: str, new: str) -> str:
+        """Merge two memory contents"""
+        # Parse existing content
+        existing_parts = existing.split(" | ")
+        new_parts = new.split(" | ")
+        
+        # Merge parts
+        merged = {}
+        for part in existing_parts:
+            if ":" in part:
+                key, value = part.split(":", 1)
+                merged[key.strip()] = value.strip()
+        
+        for part in new_parts:
+            if ":" in part:
+                key, value = part.split(":", 1)
+                # Update with new value (newer takes precedence)
+                merged[key.strip()] = value.strip()
+        
+        # Rebuild content
+        return " | ".join([f"{k}:{v}" for k, v in merged.items()])
+    
+    async def _update_memory(self, memory_id: int, content: str, importance: float):
+        """Update existing memory in database"""
+        try:
+            async with aiosqlite.connect(self.memory.db_path) as db:
+                await db.execute("""
+                    UPDATE long_term_memory 
+                    SET content = ?, importance = ?, accessed_count = accessed_count + 1
+                    WHERE id = ?
+                """, (content, importance, memory_id))
+                await db.commit()
+        except Exception as e:
+            logger.error(f"Error updating memory: {e}")
+    
+    def _detect_role_assignment(self, message: str) -> Optional[str]:
+        """Detect if user is assigning or removing a role to the AI"""
+        role_patterns = {
+            "猫娘": "猫娘", "喵": "猫娘",
+            "助手": "助手", "assistant": "助手",
+            "老师": "老师", "teacher": "老师",
+            "专家": "专家", "expert": "专家",
+            "朋友": "朋友", "friend": "朋友",
+            "秘书": "秘书", "保姆": "保姆",
+            "黑客": "黑客", "程序员": "程序员",
+            "诗人": "诗人", "作家": "作家",
+            "医生": "医生", "律师": "律师"
+        }
+        
+        # Check for role assignment patterns
+        assignment_patterns = ["你是", "你是", "当", "扮演", "作为", "变成", "成为"]
+        
+        for keyword, role in role_patterns.items():
+            if keyword in message:
+                # Check if it's a role assignment pattern
+                for pattern in assignment_patterns:
+                    if pattern in message:
+                        return role
+        
+        # Check for role removal patterns
+        removal_patterns = ["不是", "不再是", "别当", "别做", "停止"]
+        for pattern in removal_patterns:
+            if pattern in message:
+                # Find which role is being removed
+                for keyword, role in role_patterns.items():
+                    if keyword in message:
+                        return role
+        
+        return None
+    
+    def _extract_key_information(self, user_message: str, assistant_response: str) -> str:
+        """
+        Extract key information from dialogue using rule-based compression
+        
+        Returns a compressed summary with:
+        - User intent/request
+        - Key entities mentioned
+        - Assistant's role/persona if defined
+        - AI response key points
+        """
+        compressed_parts = []
+        
+        # 1. Extract user intent
+        user_lower = user_message.lower()
+        
+        # Detect role assignment
+        role_keywords = {
+            "猫娘": "猫娘", "cat": "猫娘", "喵": "猫娘",
+            "助手": "助手", "assistant": "助手",
+            "老师": "老师", "teacher": "老师",
+            "专家": "专家", "expert": "专家",
+            "朋友": "朋友", "friend": "朋友"
+        }
+        
+        detected_role = None
+        for keyword, role in role_keywords.items():
+            if keyword in user_message:
+                detected_role = role
+                break
+        
+        if detected_role:
+            compressed_parts.append(f"角色:{detected_role}")
+        
+        # 2. Detect user request type
+        request_types = {
+            "写": "创作", "创作": "创作", "小说": "创作",
+            "故事": "创作", "诗": "创作",
+            "翻译": "翻译", "解释": "解释",
+            "什么是": "查询", "你是谁": "身份",
+            "回忆": "记忆", "记住": "记忆", "生日": "个人信息",
+            "名字": "个人信息", "年龄": "个人信息", "喜欢": "偏好"
+        }
+        
+        detected_request = None
+        for keyword, req_type in request_types.items():
+            if keyword in user_message:
+                detected_request = req_type
+                break
+        
+        if detected_request:
+            compressed_parts.append(f"意图:{detected_request}")
+        
+        # 3. Extract persona from assistant response (shorter)
+        persona_indicators = ["我是", "我叫", "名字"]
+        for indicator in persona_indicators:
+            if indicator in assistant_response:
+                idx = assistant_response.find(indicator)
+                # Get just the persona name, up to 30 chars
+                persona_text = assistant_response[idx:idx+30].split("，")[0].split("。")[0].split("\n")[0]
+                compressed_parts.append(f"身份:{persona_text}")
+                break
+        
+        # 4. Extract AI response key points
+        ai_key_points = self._extract_ai_key_points(assistant_response)
+        if ai_key_points:
+            compressed_parts.append(f"AI:{ai_key_points}")
+        
+        # 5. Build compressed memory
+        if compressed_parts:
+            compressed_memory = " | ".join(compressed_parts)
+            # Add short user message
+            compressed_memory += f" | 用户:{user_message[:30]}"
+        else:
+            # Fallback
+            compressed_memory = f"对话 | 用户:{user_message[:20]} | AI:{assistant_response[:30]}"
+        
+        return compressed_memory
+    
+    def _extract_ai_key_points(self, response: str) -> str:
+        """Extract key points from AI response"""
+        # Remove common prefixes/suffixes
+        response = response.strip()
+        
+        # Skip if too short
+        if len(response) < 10:
+            return response[:30]
+        
+        # Extract first meaningful sentence
+        sentences = response.replace("！", "。").replace("？", "。").replace("...", "。").split("。")
+        first_sentence = ""
+        for sentence in sentences:
+            sentence = sentence.strip()
+            if len(sentence) >= 5:
+                first_sentence = sentence
+                break
+        
+        if not first_sentence:
+            first_sentence = response[:40]
+        
+        # Limit length
+        if len(first_sentence) > 40:
+            first_sentence = first_sentence[:40] + "..."
+        
+        # Remove emojis and special chars for cleaner output
+        import re
+        first_sentence = re.sub(r'[^\w\s，。、：！？]', '', first_sentence)
+        
+        return first_sentence
+    
+    def _extract_entities(self, text: str) -> List[str]:
+        """Extract key entities from text - meaningful words only"""
+        import re
+        
+        entities = []
+        
+        # Extract Chinese words (2-4 chars)
+        chinese_words = re.findall(r'[\u4e00-\u9fa5]{2,4}', text)
+        
+        # Common stop words
+        stop_words = {
+            '一个', '这个', '那个', '什么', '怎么', '可以', '就是', '不是', '没有',
+            '因为', '所以', '但是', '然后', '如果', '虽然', '只是', '而且', '或者',
+            '已经', '需要', '应该', '可能', '知道', '觉得', '认为', '希望', '喜欢',
+            '今天', '明天', '昨天', '现在', '这里', '那里', '这些', '那些', '一些',
+            '你好', '谢谢', '请', '帮', '想', '要', '会', '能', '在', '有', '是',
+            '的', '了', '吗', '呢', '吧', '啊', '哦', '嗯', '呀', '啦', '喵',
+            '主人', '一篇', '五百', '小说', '写一', '百字', '用户', '助手'
+        }
+        
+        for word in chinese_words:
+            if word not in stop_words and len(word) >= 2:
+                entities.append(word)
+        
+        # Deduplicate and limit to 5
+        unique_entities = list(dict.fromkeys(entities))[:5]
+        
+        return unique_entities
     
     async def cleanup(self):
         """Cleanup resources"""
