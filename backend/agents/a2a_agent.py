@@ -83,7 +83,7 @@ class A2AAgent:
             
             elif self.config.provider == ModelProvider.MIMO:
                 api_key = self.config.mimo_api_key or api_keys.get('mimo_api_key')
-                base_url = self.config.api_base_url or base_urls.get('mimo_base_url') or "https://api.xiaomi.com/v1"
+                base_url = self.config.api_base_url or base_urls.get('mimo_base_url') or "https://api.xiaomimimo.com/v1"
                 if not api_key:
                     raise ValueError("MiMo API key not configured")
                 self.openai_client = AsyncOpenAI(api_key=api_key, base_url=base_url)

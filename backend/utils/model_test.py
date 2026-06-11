@@ -62,7 +62,7 @@ async def test_model_connection(config: AgentConfig) -> Dict[str, Any]:
                 base_url = config.api_base_url or "https://api.moonshot.cn/v1"
             elif provider == ModelProvider.MIMO:
                 api_key = config.mimo_api_key
-                base_url = config.api_base_url or "https://api.xiaomi.com/v1"
+                base_url = config.api_base_url or "https://api.xiaomimimo.com/v1"
             elif provider == ModelProvider.MINIMAX:
                 api_key = config.minimax_api_key
                 base_url = config.api_base_url or "https://api.minimax.chat/v1/text/chatcompletion"

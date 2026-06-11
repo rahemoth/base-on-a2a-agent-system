@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Plus, Trash2, Save } from 'lucide-react';
 import { storageService } from '../services/storage';
+import { agentService } from '../services/api';
 import './AgentConfigModal.css';
 
 // Constants
@@ -35,8 +36,8 @@ const KIMI_MODELS = [
 ];
 
 const MIMO_MODELS = [
-  { value: 'mimo-2.5-pro', label: 'MiMo 2.5 Pro' },
-  { value: 'mimo-2.5', label: 'MiMo 2.5' }
+  { value: 'mimo-v2.5-pro', label: 'MiMo V2.5 Pro' },
+  { value: 'mimo-v2.5', label: 'MiMo V2.5' }
 ];
 
 const MINIMAX_MODELS = [
@@ -86,8 +87,8 @@ const PROVIDERS = {
     requiresApiKey: true,
     apiKeyField: 'mimo_api_key',
     apiKeyLabel: 'MiMo API 密钥',
-    defaultModel: 'mimo-2.5-pro',
-    defaultBaseUrl: 'https://api.xiaomi.com/v1',
+    defaultModel: 'mimo-v2.5-pro',
+    defaultBaseUrl: 'https://api.xiaomimimo.com/v1',
     isLocal: false
   },
   minimax: {

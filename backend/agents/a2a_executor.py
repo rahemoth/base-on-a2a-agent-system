@@ -19,6 +19,7 @@ from backend.utils.a2a_utils import extract_text_from_parts
 from backend.agents.memory import AgentMemory
 from backend.agents.cognitive import CognitiveProcessor
 from backend.agents.tools import EnhancedToolManager
+from backend.config import settings
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -139,7 +140,7 @@ class LLMAgentExecutor(AgentExecutor):
         
         elif self.config.provider == ModelProvider.MIMO:
             api_key = self.config.mimo_api_key or self.mimo_api_key
-            base_url = self.config.api_base_url or self.mimo_base_url or "https://api.xiaomi.com/v1"
+            base_url = self.config.api_base_url or self.mimo_base_url or "https://api.xiaomimimo.com/v1"
             
             if api_key:
                 self.openai_client = AsyncOpenAI(api_key=api_key, base_url=base_url)
@@ -329,7 +330,27 @@ class LLMAgentExecutor(AgentExecutor):
             cognitive_context = self._build_cognitive_context(perception, reasoning, decision)
             
             # Check if API key is configured
-            api_key = self.config.openai_api_key or self.config.google_api_key or settings.OPENAI_API_KEY or settings.GOOGLE_API_KEY
+            # Get API key based on provider
+            if self.config.provider == ModelProvider.GEMINI:
+                api_key = self.config.google_api_key or self.google_api_key or settings.google_api_key
+            elif self.config.provider == ModelProvider.GPT:
+                api_key = self.config.openai_api_key or self.openai_api_key or settings.openai_api_key
+            elif self.config.provider == ModelProvider.CLAUDE:
+                api_key = self.config.anthropic_api_key or self.anthropic_api_key
+            elif self.config.provider == ModelProvider.DEEPSEEK:
+                api_key = self.config.openai_api_key or self.openai_api_key or settings.openai_api_key
+            elif self.config.provider == ModelProvider.KIMI:
+                api_key = self.config.kimi_api_key or self.kimi_api_key
+            elif self.config.provider == ModelProvider.MIMO:
+                api_key = self.config.mimo_api_key or self.mimo_api_key
+            elif self.config.provider == ModelProvider.MINIMAX:
+                api_key = self.config.minimax_api_key or self.minimax_api_key
+            elif self.config.provider == ModelProvider.GLM:
+                api_key = self.config.zhipu_api_key or self.zhipu_api_key
+            elif self.config.provider == ModelProvider.QWEN:
+                api_key = self.config.qwen_api_key or self.qwen_api_key
+            else:
+                api_key = None
             
             if not api_key:
                 # No API key configured, return mock response
@@ -361,7 +382,54 @@ class LLMAgentExecutor(AgentExecutor):
                 "task_id": task_id
             })
             
+            # RAG Memory Compression - Log compressed memory output
+            short_term = self.memory.get_short_term_memory()
+            if short_term:
+                print("\n" + "="*80)
+                print(f"[RAG Memory Compression] Agent: {self.agent_id}")
+                print("="*80)
+                
+                # Display short-term memory (hot memory)
+                print("\n📦 HOT MEMORY (Short-term - Recent Dialogue):")
+                print("-"*40)
+                for i, mem in enumerate(short_term[-5:]):  # Show last 5
+                    role = mem.get('role', 'unknown')
+                    content = mem.get('content', '')[:100]
+                    print(f"  [{i+1}] {role}: {content}...")
+                
+                # Display compressed memory summary
+                print("\n🗜️ COMPRESSION STATISTICS:")
+                print("-"*40)
+                user_msgs = [m for m in short_term if m.get('role') == 'user']
+                assistant_msgs = [m for m in short_term if m.get('role') == 'assistant']
+                total_chars = sum(len(m.get('content', '')) for m in short_term)
+                print(f"  Original dialogue turns: {len(short_term)}")
+                print(f"  User messages: {len(user_msgs)}")
+                print(f"  Assistant messages: {len(assistant_msgs)}")
+                print(f"  Total characters: {total_chars}")
+                print(f"  Compression ratio: {len(short_term)} turns -> 1 summary")
+                
+                # Display key information extraction
+                print("\n📊 INFORMATION EXTRACTION:")
+                print("-"*40)
+                print(f"  Current query: {text_content[:80]}...")
+                print(f"  Response length: {len(response_text)} chars")
+                print(f"  Complexity score: {perception.get('complexity', 'unknown')}")
+                print(f"  Detected intent: {perception.get('intent', 'unknown')}")
+                print(f"  Decision type: {decision.get('decision_type', 'unknown')}")
+                print(f"  Urgency level: {perception.get('urgency', 'unknown')}")
+                
+                # Display memory context for LLM
+                memory_context = self.memory.get_context_for_llm(max_messages=3)
+                if memory_context:
+                    print("\n🧠 MEMORY CONTEXT (sent to LLM):")
+                    print("-"*40)
+                    print(memory_context[:500])
+                
+                print("\n" + "="*80 + "\n")
+            
             # Save important information to long-term memory
+            importance = 0.7 if perception["complexity"] == "high" else 0.5
             await self.memory.add_to_long_term(
                 memory_type="conversation",
                 content=f"Q: {text_content[:CONTENT_SUMMARY_LENGTH]}... A: {response_text[:CONTENT_SUMMARY_LENGTH]}...",
@@ -370,8 +438,17 @@ class LLMAgentExecutor(AgentExecutor):
                     "decision_type": decision["decision_type"],
                     "complexity": perception["complexity"]
                 },
-                importance=0.7 if perception["complexity"] == "high" else 0.5
+                importance=importance
             )
+            
+            # Log long-term memory storage
+            print(f"\n💾 LONG-TERM MEMORY STORAGE:")
+            print("-"*40)
+            print(f"  Memory type: conversation")
+            print(f"  Importance score: {importance}")
+            print(f"  Stored content preview: Q: {text_content[:50]}... A: {response_text[:50]}...")
+            print(f"  Metadata: complexity={perception['complexity']}, decision={decision['decision_type']}")
+            print("")
             
             # Update task status
             await self.memory.update_task(

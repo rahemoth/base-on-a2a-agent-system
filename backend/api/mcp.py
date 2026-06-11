@@ -67,12 +67,11 @@ async def get_agent_tools(agent_id: str):
     try:
         client = await mcp_manager.get_client(agent_id)
         if not client:
-            raise HTTPException(status_code=404, detail="Agent MCP client not found")
+            # Return empty tools list if no MCP client exists (agent not initialized or no MCP servers configured)
+            return {"tools": {}}
         
         tools = await client.list_tools()
         return {"tools": tools}
-    except HTTPException:
-        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

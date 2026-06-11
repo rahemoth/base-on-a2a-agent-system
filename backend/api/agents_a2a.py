@@ -4,7 +4,7 @@ FastAPI routes for A2A-compliant agent management and A2A protocol endpoints
 import logging
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse, JSONResponse
-from typing import List, Optional, AsyncGenerator
+from typing import List, Optional, AsyncGenerator, Dict, Any
 import json
 import asyncio
 
@@ -15,9 +15,11 @@ from backend.models import (
     AgentMessage,
     AgentUpdate,
     AgentCollaboration,
+    AgentConfig,
 )
 from backend.agents.a2a_manager import a2a_agent_manager
 from backend.utils.a2a_utils import extract_text_from_parts
+from backend.utils.model_test import test_model_connection
 
 # Initialize logger at module level
 logger = logging.getLogger(__name__)
@@ -276,3 +278,40 @@ async def get_task(agent_id: str, task_id: str):
         raise HTTPException(status_code=404, detail="Task not found")
     
     return task.model_dump(exclude_none=True)
+
+
+# ============================================================================
+# Test Connection Endpoint
+# ============================================================================
+
+@router.post("/test-connection")
+async def test_agent_connection(config: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Test if the agent configuration can connect to the model API.
+    
+    This endpoint allows testing model connectivity without creating an agent.
+    """
+    try:
+        # Convert dict to AgentConfig-like object
+        from backend.models import AgentConfig, ModelProvider
+        
+        # Create a minimal AgentConfig for testing
+        agent_config = AgentConfig(
+            name="test-agent",
+            provider=ModelProvider(config.get("provider", "deepseek")),
+            model=config.get("model", ""),
+            api_base_url=config.get("api_base_url"),
+            google_api_key=config.get("google_api_key"),
+            openai_api_key=config.get("openai_api_key"),
+            anthropic_api_key=config.get("anthropic_api_key"),
+            kimi_api_key=config.get("kimi_api_key"),
+            mimo_api_key=config.get("mimo_api_key"),
+            minimax_api_key=config.get("minimax_api_key"),
+            zhipu_api_key=config.get("zhipu_api_key"),
+            qwen_api_key=config.get("qwen_api_key"),
+        )
+        
+        result = await test_model_connection(agent_config)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

@@ -182,6 +182,7 @@ class A2AAgentManager:
         queue_manager = InMemoryQueueManager()
         request_handler = DefaultRequestHandler(
             agent_executor=executor,
+            agent_card=agent_card,
             task_store=task_store,
             queue_manager=queue_manager,
         )
@@ -263,21 +264,33 @@ class A2AAgentManager:
         
         # Get response from event queue
         events = []
-        while not event_queue.is_closed():
+        while True:
             try:
                 event = await asyncio.wait_for(event_queue.dequeue_event(), timeout=1.0)
                 if event:
                     events.append(event)
+                    logger.debug(f"Agent {agent_id}: Received event type: {type(event).__name__}")
+                else:
+                    break
             except asyncio.TimeoutError:
+                logger.debug(f"Agent {agent_id}: Event queue timeout")
                 break
         
         # Return the last message event as response
+        # The event could be either a Message directly or an object with a message attribute
         if events:
             for event in reversed(events):
-                if hasattr(event, 'message'):
+                # Check if event is a Message object directly
+                if isinstance(event, types.Message):
+                    logger.debug(f"Agent {agent_id}: Found Message event")
+                    return event
+                # Check if event has a message attribute (wrapped events)
+                elif hasattr(event, 'message') and isinstance(event.message, types.Message):
+                    logger.debug(f"Agent {agent_id}: Found event with message attribute")
                     return event.message
         
-        # Fallback: create a simple response
+        # Fallback: create a simple response (should rarely reach here)
+        logger.warning(f"Agent {agent_id}: No valid message found in {len(events)} events, using fallback")
         return types.Message(
             message_id=str(uuid.uuid4()),
             role=types.Role.ROLE_AGENT,
