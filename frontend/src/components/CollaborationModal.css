@@ -20,7 +20,7 @@
 
 .section-description {
   font-size: 0.875rem;
-  color: var(--text-secondary);
+  color: var(--color-text-secondary);
   margin-bottom: 1rem;
 }
 
@@ -33,7 +33,7 @@
 
 .agent-item {
   background: var(--background);
-  border: 2px solid var(--border);
+  border: 2px solid var(--color-border);
   border-radius: 12px;
   padding: 1rem;
   cursor: pointer;
@@ -44,12 +44,12 @@
 }
 
 .agent-item:hover {
-  border-color: var(--primary);
-  background: var(--surface-light);
+  border-color: var(--color-primary);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .agent-item.selected {
-  border-color: var(--primary);
+  border-color: var(--color-primary);
   background: rgba(99, 102, 241, 0.1);
 }
 
@@ -70,12 +70,12 @@
 
 .agent-model {
   font-size: 0.75rem;
-  color: var(--text-secondary);
+  color: var(--color-text-secondary);
 }
 
 .selected-count {
   font-size: 0.875rem;
-  color: var(--primary);
+  color: var(--color-primary);
   font-weight: 500;
   text-align: center;
   padding: 0.5rem;
@@ -105,7 +105,7 @@
 .progress-header h3 {
   margin: 0;
   font-size: 1.125rem;
-  color: var(--primary);
+  color: var(--color-primary);
 }
 
 .progress-info {
@@ -113,11 +113,11 @@
   flex-direction: column;
   gap: 0.5rem;
   font-size: 0.875rem;
-  color: var(--text-secondary);
+  color: var(--color-text-secondary);
 }
 
 .waiting-indicator {
-  color: var(--warning);
+  color: var(--color-warning);
   font-weight: 500;
   animation: pulse 2s ease-in-out infinite;
 }
@@ -134,12 +134,12 @@
   align-items: center;
   margin-bottom: 1.5rem;
   padding-bottom: 1rem;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .results-header h3 {
   margin: 0;
-  color: var(--primary);
+  color: var(--color-primary);
 }
 
 .conversation-history {
@@ -155,20 +155,20 @@
   background: var(--background);
   border-radius: 12px;
   padding: 1rem;
-  border-left: 4px solid var(--border);
+  border-left: 4px solid var(--color-border);
 }
 
 .message.system {
-  border-left-color: var(--text-secondary);
-  background: var(--surface-light);
+  border-left-color: var(--color-text-secondary);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .message.agent {
-  border-left-color: var(--primary);
+  border-left-color: var(--color-primary);
 }
 
 .message.user {
-  border-left-color: var(--success);
+  border-left-color: var(--color-success);
 }
 
 .message-meta {
@@ -177,20 +177,20 @@
   gap: 0.75rem;
   margin-bottom: 0.5rem;
   font-size: 0.75rem;
-  color: var(--text-secondary);
+  color: var(--color-text-secondary);
 }
 
 .message-role {
   text-transform: uppercase;
   font-weight: 600;
   padding: 0.25rem 0.5rem;
-  background: var(--surface-light);
+  background: rgba(255, 255, 255, 0.05);
   border-radius: 4px;
 }
 
 .message-agent {
   font-weight: 600;
-  color: var(--primary);
+  color: var(--color-primary);
 }
 
 .message-round {
@@ -198,7 +198,7 @@
   background: rgba(99, 102, 241, 0.2);
   border-radius: 4px;
   font-weight: 600;
-  color: var(--primary);
+  color: var(--color-primary);
 }
 
 .message-time {
@@ -214,7 +214,7 @@
 .message-status {
   margin-top: 0.5rem;
   font-size: 0.75rem;
-  color: var(--text-secondary);
+  color: var(--color-text-secondary);
   font-style: italic;
 }
 
@@ -242,7 +242,7 @@
 .typing-indicator span {
   width: 8px;
   height: 8px;
-  background: var(--text-secondary);
+  background: var(--color-text-secondary);
   border-radius: 50%;
   animation: pulse 1.4s ease-in-out infinite;
 }
@@ -271,7 +271,7 @@
   justify-content: center;
   padding-top: 1rem;
   margin-top: 1rem;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--color-border);
 }
 
 .spinner-small {
@@ -300,10 +300,10 @@
 }
 
 .conversation-history::-webkit-scrollbar-thumb {
-  background: var(--border);
+  background: var(--color-border);
   border-radius: 4px;
 }
 
 .conversation-history::-webkit-scrollbar-thumb:hover {
-  background: var(--text-secondary);
+  background: var(--color-text-secondary);
 }

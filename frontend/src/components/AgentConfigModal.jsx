@@ -471,27 +471,31 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
 
             <div className="form-group">
               <label>模型提供商 *</label>
-              <select
-                value={config.provider}
-                onChange={(e) => handleProviderChange(e.target.value)}
-              >
-                {Object.entries(PROVIDERS).map(([key, provider]) => (
-                  <option key={key} value={key}>{provider.label}</option>
-                ))}
-              </select>
+              <div className="magic-select">
+                <select
+                  value={config.provider}
+                  onChange={(e) => handleProviderChange(e.target.value)}
+                >
+                  {Object.entries(PROVIDERS).map(([key, provider]) => (
+                    <option key={key} value={key}>{provider.label}</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             {!isLocalProvider && (
               <div className="form-group">
                 <label>模型 *</label>
-                <select
-                  value={config.model}
-                  onChange={(e) => handleModelChange(e.target.value)}
-                >
-                  {providerInfo.models.map(model => (
-                    <option key={model.value} value={model.value}>{model.label}</option>
-                  ))}
-                </select>
+                <div className="magic-select">
+                  <select
+                    value={config.model}
+                    onChange={(e) => handleModelChange(e.target.value)}
+                  >
+                    {providerInfo.models.map(model => (
+                      <option key={model.value} value={model.value}>{model.label}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
             )}
 
@@ -723,21 +727,24 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
             <p className="form-help-text">配置检索增强生成 (RAG) 和上下文压缩功能。</p>
             
             <div className="form-group">
-              <label className="checkbox-label">
+              <div className="magic-checkbox">
                 <input
                   type="checkbox"
+                  id="rag_enabled"
                   checked={config.rag_enabled || false}
                   onChange={(e) => setConfig({ ...config, rag_enabled: e.target.checked })}
                 />
-                启用 RAG 记忆系统
-              </label>
+                <span className="checkmark"></span>
+                <span>启用 RAG 记忆系统</span>
+              </div>
               <small className="form-hint">启用后，Agent 将使用向量数据库存储和检索对话历史</small>
             </div>
 
             <div className="form-group">
-              <label className="checkbox-label">
+              <div className="magic-checkbox">
                 <input
                   type="checkbox"
+                  id="compression_enabled"
                   checked={config.compression?.enabled || false}
                   onChange={(e) => setConfig({ 
                     ...config, 
@@ -747,8 +754,9 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
                     } 
                   })}
                 />
-                启用上下文压缩
-              </label>
+                <span className="checkmark"></span>
+                <span>启用上下文压缩</span>
+              </div>
               <small className="form-hint">使用小模型压缩长对话历史，减少 token 消耗</small>
             </div>
 
@@ -756,14 +764,16 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
               <div className="compression-settings">
                 <div className="form-group">
                   <label>压缩模型提供商 *</label>
-                  <select
-                    value={config.compression?.provider || 'deepseek'}
-                    onChange={(e) => handleCompressionProviderChange(e.target.value)}
-                  >
-                    {Object.entries(PROVIDERS).map(([key, provider]) => (
-                      <option key={key} value={key}>{provider.label}</option>
-                    ))}
-                  </select>
+                  <div className="magic-select">
+                    <select
+                      value={config.compression?.provider || 'deepseek'}
+                      onChange={(e) => handleCompressionProviderChange(e.target.value)}
+                    >
+                      {Object.entries(PROVIDERS).map(([key, provider]) => (
+                        <option key={key} value={key}>{provider.label}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
                 {(() => {
@@ -774,14 +784,16 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
                     return (
                       <div className="form-group">
                         <label>压缩模型 *</label>
-                        <select
-                          value={config.compression?.model || compressionProvider.defaultModel}
-                          onChange={(e) => handleCompressionModelChange(e.target.value)}
-                        >
-                          {compressionProvider.models?.map(model => (
-                            <option key={model.value} value={model.value}>{model.label}</option>
-                          ))}
-                        </select>
+                        <div className="magic-select">
+                          <select
+                            value={config.compression?.model || compressionProvider.defaultModel}
+                            onChange={(e) => handleCompressionModelChange(e.target.value)}
+                          >
+                            {compressionProvider.models?.map(model => (
+                              <option key={model.value} value={model.value}>{model.label}</option>
+                            ))}
+                          </select>
+                        </div>
                       </div>
                     );
                   } else {
