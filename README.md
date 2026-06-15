@@ -323,6 +323,79 @@ ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
 
 ## 开发
 
+### Windows 桌面应用构建
+
+项目支持构建为 Windows 原生桌面应用，使用 Electron 框架。
+
+#### 前置要求
+- Node.js 18+
+- Python 3.10+（后端运行需要）
+
+#### 构建步骤
+
+1. **进入前端目录**
+```bash
+cd frontend
+```
+
+2. **安装依赖（使用国内镜像加速）**
+```bash
+set ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/
+npm install
+```
+
+3. **构建前端**
+```bash
+npm run build
+```
+
+4. **构建 Windows 桌面应用**
+```bash
+set ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/
+set ELECTRON_BUILDER_BINARIES_MIRROR=https://npmmirror.com/mirrors/electron-builder-binaries/
+npm run electron:build:win
+```
+
+#### 构建产物
+
+构建完成后，产物位于 `frontend/dist/electron/` 目录：
+
+- `A2A Multi-Agent System Setup 1.0.0.exe` - Windows 安装程序（NSIS）
+- `win-unpacked/` - 解压后的应用目录（可直接运行）
+
+#### 运行方式
+
+**方式一：使用安装程序**
+```bash
+# 运行安装程序
+frontend/dist/electron/A2A Multi-Agent System Setup 1.0.0.exe
+```
+
+**方式二：直接运行**
+```bash
+# 直接运行可执行文件
+frontend/dist/electron/win-unpacked/A2A Multi-Agent System.exe
+```
+
+#### 开发模式
+
+在开发模式下运行（热重载）：
+```bash
+cd frontend
+npm run electron:dev
+```
+
+#### 应用特性
+
+- 自动启动 Python 后端服务
+- 提供完整的 Agent 管理和聊天界面
+- 支持多 Agent 协作功能
+- 集成技能导入系统（skill.md 格式）
+- 菜单操作支持：
+  - `Ctrl+Q` - 退出应用
+  - `F12` - 打开开发者工具
+  - `Ctrl+R` - 刷新页面
+
 ### 项目结构
 
 ```
