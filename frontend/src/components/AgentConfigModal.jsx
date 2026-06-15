@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Plus, Trash2, Save } from 'lucide-react';
 import { storageService } from '../services/storage';
-import { agentService } from '../services/api';
+import { agentService, skillService } from '../services/api';
 import './AgentConfigModal.css';
 
 // Constants
@@ -203,7 +203,8 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
         max_tokens: 500,
         temperature: 0.3,
         target_ratio: 0.3
-      }
+      },
+      skills: []
     };
 
 
@@ -248,6 +249,118 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
   // State for compression model test connection
   const [isCompressionTesting, setIsCompressionTesting] = useState(false);
   const [compressionTestResult, setCompressionTestResult] = useState(null);
+
+  // Skills state
+  const [availableSkills, setAvailableSkills] = useState([]);
+
+  // Load available skills on mount
+  useEffect(() => {
+    skillService.listSkills().then(res => {
+      setAvailableSkills(res.skills || []);
+    }).catch(err => console.warn('Failed to load skills:', err));
+  }, []);
+
+  // Skill import state
+  const [showImportForm, setShowImportForm] = useState(false);
+  const [importData, setImportData] = useState({ id: '', name: '', description: '', prompt: '', category: 'custom', tags: '' });
+  const [importError, setImportError] = useState('');
+  const [importingFile, setImportingFile] = useState(false);
+  const [filePreview, setFilePreview] = useState(null);
+
+  const handleImportSkill = async () => {
+    setImportError('');
+    if (!importData.id || !importData.name || !importData.prompt) {
+      setImportError('ID、名称和提示词为必填项');
+      return;
+    }
+    try {
+      const payload = {
+        ...importData,
+        tags: importData.tags ? importData.tags.split(',').map(t => t.trim()).filter(Boolean) : [],
+      };
+      await skillService.importSkill(payload);
+      // Reload skills
+      const res = await skillService.listSkills();
+      setAvailableSkills(res.skills || []);
+      setShowImportForm(false);
+      setImportData({ id: '', name: '', description: '', prompt: '', category: 'custom', tags: '' });
+    } catch (err) {
+      setImportError(err.response?.data?.detail || err.message);
+    }
+  };
+
+  const handleFileImport = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.name.endsWith('.md')) {
+      setImportError('只支持 .md 格式的文件');
+      return;
+    }
+
+    setImportError('');
+    setImportingFile(true);
+
+    try {
+      // Preview first
+      const result = await skillService.previewSkillFromFile(file);
+      setFilePreview(result.skills || []);
+
+      if (result.skills?.length > 0) {
+        // Auto-fill form with first skill preview
+        const firstSkill = result.skills[0];
+        setImportData({
+          id: firstSkill.id || '',
+          name: firstSkill.name || '',
+          description: firstSkill.description || '',
+          prompt: firstSkill.prompt || '',
+          category: firstSkill.category || 'custom',
+          tags: (firstSkill.tags || []).join(', ')
+        });
+      }
+    } catch (err) {
+      setImportError(err.response?.data?.detail || err.message);
+    } finally {
+      setImportingFile(false);
+    }
+  };
+
+  const handleConfirmFileImport = async () => {
+    if (!filePreview || filePreview.length === 0) return;
+
+    setImportError('');
+    setImportingFile(true);
+
+    try {
+      // Use the file input element to get the actual file
+      const fileInput = document.getElementById('skill-file-input');
+      if (fileInput?.files?.[0]) {
+        await skillService.importFromFile(fileInput.files[0], 'import');
+        const res = await skillService.listSkills();
+        setAvailableSkills(res.skills || []);
+        setShowImportForm(false);
+        setFilePreview(null);
+        setImportData({ id: '', name: '', description: '', prompt: '', category: 'custom', tags: '' });
+      }
+    } catch (err) {
+      setImportError(err.response?.data?.detail || err.message);
+    } finally {
+      setImportingFile(false);
+    }
+  };
+
+  const handleDeleteSkill = async (skillId) => {
+    if (!confirm('确定要删除这个自定义技能吗？')) return;
+    try {
+      await skillService.deleteSkill(skillId);
+      // Remove from config if selected
+      setConfig({ ...config, skills: (config.skills || []).filter(s => s !== skillId) });
+      const res = await skillService.listSkills();
+      setAvailableSkills(res.skills || []);
+    } catch (err) {
+      alert('删除失败: ' + (err.response?.data?.detail || err.message));
+    }
+  };
 
   // Track if mouse was pressed on overlay for proper drag handling
   const overlayClickStarted = React.useRef(false);
@@ -917,6 +1030,206 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
                 </div>
               </div>
             )}
+          </div>
+
+          {/* Skills Configuration */}
+          <div className="form-section">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <h3>技能配置</h3>
+                <p className="form-help-text">选择要加载到此 Agent 的预定义技能，或导入自定义技能。</p>
+              </div>
+              <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowImportForm(!showImportForm)}>
+                {showImportForm ? '取消' : '导入技能'}
+              </button>
+            </div>
+
+            {/* Import Form */}
+            {showImportForm && (
+              <div style={{ marginTop: '16px', padding: '16px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--surface-light)' }}>
+                <h4 style={{ margin: '0 0 12px', fontSize: '14px', color: 'var(--text)' }}>导入自定义技能</h4>
+                {importError && <div style={{ marginBottom: '12px', padding: '8px', borderRadius: '6px', background: 'rgba(239,68,68,0.1)', color: '#ef4444', fontSize: '13px' }}>{importError}</div>}
+
+                {/* File Upload Section */}
+                <div style={{ marginBottom: '16px', padding: '12px', borderRadius: '8px', background: 'rgba(139,92,246,0.1)', border: '1px dashed rgba(139,92,246,0.3)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: filePreview?.length > 0 ? '12px' : 0 }}>
+                    <input
+                      type="file"
+                      id="skill-file-input"
+                      accept=".md"
+                      onChange={handleFileImport}
+                      style={{ display: 'none' }}
+                    />
+                    <label htmlFor="skill-file-input" style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '8px 16px',
+                      background: 'linear-gradient(135deg, #7c3aed, #8b5cf6)',
+                      color: 'white',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      fontWeight: 500,
+                      transition: 'all 0.2s',
+                    }}>
+                      📄 上传 skill.md 文件
+                    </label>
+                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                      支持 .md 格式，可包含多个技能
+                    </span>
+                  </div>
+                  {filePreview?.length > 0 && (
+                    <div style={{ marginTop: '8px' }}>
+                      <div style={{ fontSize: '12px', color: '#a78bfa', marginBottom: '8px' }}>
+                        预览到 {filePreview.length} 个技能：
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                        {filePreview.map((skill, idx) => (
+                          <span key={idx} style={{
+                            padding: '4px 10px',
+                            background: 'rgba(139,92,246,0.2)',
+                            color: '#a78bfa',
+                            borderRadius: '12px',
+                            fontSize: '11px',
+                            fontWeight: 500
+                          }}>
+                            {skill.name || skill.id}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {importingFile && (
+                    <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                      正在解析文件...
+                    </div>
+                  )}
+                </div>
+
+                {/* Manual Input Form */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                  <div style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)', padding: '0 8px' }}>或手动填写</span>
+                  <div style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div className="form-group">
+                    <label>技能 ID *</label>
+                    <input value={importData.id} onChange={(e) => setImportData({ ...importData, id: e.target.value })} placeholder="my_custom_skill" />
+                  </div>
+                  <div className="form-group">
+                    <label>显示名称 *</label>
+                    <input value={importData.name} onChange={(e) => setImportData({ ...importData, name: e.target.value })} placeholder="我的自定义技能" />
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label>描述</label>
+                  <input value={importData.description} onChange={(e) => setImportData({ ...importData, description: e.target.value })} placeholder="这个技能做什么..." />
+                </div>
+                <div className="form-group">
+                  <label>系统提示词 *</label>
+                  <textarea
+                    value={importData.prompt}
+                    onChange={(e) => setImportData({ ...importData, prompt: e.target.value })}
+                    placeholder="注入到系统提示词中的指令..."
+                    rows={4}
+                  />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div className="form-group">
+                    <label>分类</label>
+                    <input value={importData.category} onChange={(e) => setImportData({ ...importData, category: e.target.value })} placeholder="custom" />
+                  </div>
+                  <div className="form-group">
+                    <label>标签（逗号分隔）</label>
+                    <input value={importData.tags} onChange={(e) => setImportData({ ...importData, tags: e.target.value })} placeholder="tag1, tag2, tag3" />
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '8px' }}>
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => {
+                    setShowImportForm(false);
+                    setFilePreview(null);
+                    setImportData({ id: '', name: '', description: '', prompt: '', category: 'custom', tags: '' });
+                  }}>取消</button>
+                  {filePreview?.length > 0 ? (
+                    <button type="button" className="btn btn-primary btn-sm" onClick={handleConfirmFileImport} disabled={importingFile}>
+                      {importingFile ? '导入中...' : `确认导入 ${filePreview.length} 个技能`}
+                    </button>
+                  ) : (
+                    <button type="button" className="btn btn-primary btn-sm" onClick={handleImportSkill}>导入</button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Skills Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px', marginTop: '16px' }}>
+              {availableSkills.map((skill) => {
+                const isActive = (config.skills || []).includes(skill.id);
+                return (
+                  <div
+                    key={skill.id}
+                    style={{
+                      padding: '14px',
+                      borderRadius: '10px',
+                      border: `1px solid ${isActive ? 'var(--primary)' : 'var(--border)'}`,
+                      background: isActive ? 'rgba(139, 92, 246, 0.08)' : 'var(--surface-light)',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                    }}
+                    onClick={() => {
+                      const skills = config.skills || [];
+                      setConfig({
+                        ...config,
+                        skills: isActive ? skills.filter(s => s !== skill.id) : [...skills, skill.id],
+                      });
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                      <strong style={{ color: isActive ? 'var(--primary)' : 'var(--text)', fontSize: '14px' }}>
+                        {skill.is_custom && '⭐ '}{skill.name}
+                      </strong>
+                      <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                        <span style={{
+                          padding: '2px 8px', borderRadius: '12px', fontSize: '11px',
+                          background: isActive ? 'rgba(139, 92, 246, 0.2)' : skill.is_custom ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.05)',
+                          color: isActive ? 'var(--primary)' : skill.is_custom ? '#10b981' : 'var(--text-secondary)',
+                        }}>
+                          {isActive ? '已启用' : skill.is_custom ? '自定义' : skill.category}
+                        </span>
+                        {skill.is_custom && (
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); handleDeleteSkill(skill.id); }}
+                            style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '14px', padding: '2px 4px' }}
+                            title="删除技能"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: 0, lineHeight: '1.5' }}>
+                      {skill.description}
+                    </p>
+                    {skill.tags && skill.tags.length > 0 && (
+                      <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '8px' }}>
+                        {skill.tags.map(tag => (
+                          <span key={tag} style={{
+                            padding: '1px 6px', borderRadius: '4px', fontSize: '10px',
+                            background: 'rgba(255,255,255,0.05)', color: 'var(--text-secondary)',
+                          }}>
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
           <div className="modal-footer">

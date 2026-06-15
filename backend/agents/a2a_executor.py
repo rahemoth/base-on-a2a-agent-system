@@ -20,6 +20,7 @@ from backend.utils.a2a_utils import extract_text_from_parts
 from backend.agents.memory import AgentMemory
 from backend.agents.cognitive import CognitiveProcessor
 from backend.agents.tools import EnhancedToolManager
+from backend.agents.skills import SkillManager
 from backend.config import settings
 
 # Configure logger
@@ -86,7 +87,10 @@ class LLMAgentExecutor(AgentExecutor):
         
         # Initialize enhanced tool manager (will be fully initialized in initialize_mcp)
         self.tool_manager = None
-        
+
+        # Initialize skill manager
+        self.skill_manager = SkillManager()
+
         self._initialize_clients()
     
     def _initialize_clients(self):
@@ -221,7 +225,13 @@ class LLMAgentExecutor(AgentExecutor):
         
         # Discover available tools
         await self.tool_manager.discover_tools()
-        
+
+        # Activate configured skills
+        for skill_id in self.config.skills:
+            self.skill_manager.activate_skill(skill_id)
+        if self.config.skills:
+            logger.info(f"Agent {self.agent_id}: Activated {len(self.config.skills)} skills: {self.config.skills}")
+
         logger.info(f"Agent {self.agent_id}: Initialized with {len(self.tool_manager.tools)} tools")
     
     async def execute(self, request_context: RequestContext, event_queue: EventQueue) -> None:
@@ -619,36 +629,62 @@ class LLMAgentExecutor(AgentExecutor):
         
         # Combine results (role memories + semantic matches)
         scored_memories = []
-        
-        # Add role memories with high priority
-        for mem in role_memories:
+
+        # Add role memories — only keep the MOST RECENT one
+        # (newer role assignments override older ones)
+        if role_memories:
+            # Sort by timestamp descending, keep only the latest
+            role_memories.sort(key=lambda m: m.get("timestamp", ""), reverse=True)
+            latest_role = role_memories[0]
             scored_memories.append({
-                "content": mem.get("content", ""),
+                "content": latest_role.get("content", ""),
                 "memory_type": "role",
-                "importance": mem.get("importance", 1.0),
-                "similarity": 1.0,  # Role memories always relevant
-                "source": "role"
+                "importance": latest_role.get("importance", 1.0),
+                "similarity": 1.0,
+                "source": "role",
+                "timestamp": latest_role.get("timestamp", ""),
             })
-        
+
         # Add semantic matches
         for result in semantic_results:
-            # Skip if already in role memories
+            # Skip if already in scored_memories
             if any(r.get("content") == result.get("content") for r in scored_memories):
                 continue
-                
+
             scored_memories.append({
                 "content": result.get("content", ""),
                 "memory_type": result.get("memory_type", ""),
                 "importance": result.get("importance", 0.5),
                 "similarity": result.get("similarity", 0),
-                "source": "semantic"
+                "source": "semantic",
+                "timestamp": result.get("timestamp", ""),
             })
-        
-        # Sort by similarity * importance
-        scored_memories.sort(
-            key=lambda x: x.get("similarity", 0) * x.get("importance", 0.5),
-            reverse=True
-        )
+
+        # Sort by score with TIME DECAY — newer memories get a recency boost
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc)
+
+        def _memory_score(mem):
+            base = mem.get("similarity", 0) * mem.get("importance", 0.5)
+
+            # Time decay: exponential decay over 7 days
+            ts = mem.get("timestamp", "")
+            if ts:
+                try:
+                    mem_time = datetime.fromisoformat(ts)
+                    if mem_time.tzinfo is None:
+                        mem_time = mem_time.replace(tzinfo=timezone.utc)
+                    hours_ago = max((now - mem_time).total_seconds() / 3600, 0)
+                    recency = 2.718 ** (-hours_ago / 168)  # decay over 1 week (168h)
+                except (ValueError, TypeError):
+                    recency = 0.5
+            else:
+                recency = 0.5
+
+            # Final score: 60% semantic match + 40% recency
+            return 0.6 * base + 0.4 * recency * mem.get("importance", 0.5)
+
+        scored_memories.sort(key=_memory_score, reverse=True)
         
         # Add perception insights
         context_parts.append(f"[Internal Analysis]")
@@ -731,7 +767,13 @@ class LLMAgentExecutor(AgentExecutor):
         tools_info.append("Note: Tool execution is handled automatically by the system when appropriate.")
         
         return "\n".join(tools_info)
-    
+
+    def _build_skills_description(self) -> str:
+        """Build skill prompts to inject into the system prompt"""
+        if not self.skill_manager or not self.skill_manager.active_skills:
+            return ""
+        return self.skill_manager.get_active_prompt()
+
     async def _generate_google(self, text: str, request_context: RequestContext, cognitive_context: Optional[str] = None) -> str:
         """Generate response using Google GenAI"""
         if not self.google_client:
@@ -776,7 +818,12 @@ class LLMAgentExecutor(AgentExecutor):
         tools_description = self._build_tools_description()
         if tools_description:
             system_instruction += tools_description
-        
+
+        # Add active skill prompts
+        skills_description = self._build_skills_description()
+        if skills_description:
+            system_instruction += "\n\n" + skills_description
+
         if cognitive_context:
             system_instruction += "\n\nUse the internal analysis provided to enhance your response quality."
         
@@ -808,7 +855,12 @@ class LLMAgentExecutor(AgentExecutor):
         tools_description = self._build_tools_description()
         if tools_description:
             system_prompt += tools_description
-        
+
+        # Add active skill prompts
+        skills_desc = self._build_skills_description()
+        if skills_desc:
+            system_prompt += "\n\n" + skills_desc
+
         # Add RAG memory context to system prompt
         if cognitive_context:
             system_prompt += f"""

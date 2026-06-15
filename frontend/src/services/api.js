@@ -168,6 +168,67 @@ export const ragService = {
   },
 };
 
+// Skill System API
+export const skillService = {
+  async listSkills(category = null) {
+    const params = category ? { category } : {};
+    const response = await api.get('/api/skills', { params });
+    return response.data;
+  },
+
+  async getSkillDetail(skillId) {
+    const response = await api.get(`/api/skills/${skillId}`);
+    return response.data;
+  },
+
+  async importSkill(skillData) {
+    const response = await api.post('/api/skills/import', skillData);
+    return response.data;
+  },
+
+  async deleteSkill(skillId) {
+    const response = await api.delete(`/api/skills/${skillId}`);
+    return response.data;
+  },
+
+  async importFromFile(file, mode = 'import') {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('mode', mode);
+
+    const response = await api.post('/api/skills/import-file', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
+  async previewSkillFromFile(file) {
+    return this.importFromFile(file, 'preview');
+  },
+
+  async parseSkillContent(content) {
+    const response = await api.post('/api/skills/parse', { content });
+    return response.data;
+  },
+
+  async getAgentSkills(agentId) {
+    const response = await api.get(`/api/agents/${agentId}/skills`);
+    return response.data;
+  },
+
+  async activateSkill(agentId, skillId) {
+    const response = await api.post(`/api/agents/${agentId}/skills/${skillId}/activate`);
+    return response.data;
+  },
+
+  async deactivateSkill(agentId, skillId) {
+    const response = await api.post(`/api/agents/${agentId}/skills/${skillId}/deactivate`);
+    return response.data;
+  },
+};
+
 // Agent Cognitive API
 export const cognitiveService = {
   async getCognitiveState(agentId) {

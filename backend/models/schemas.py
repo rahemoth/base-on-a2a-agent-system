@@ -76,6 +76,9 @@ class AgentConfig(BaseModel):
     rag_enabled: bool = Field(False, description="Enable RAG memory system")
     compression: CompressionConfig = Field(default_factory=CompressionConfig, description="Context compression configuration")
 
+    # Skill Configuration
+    skills: List[str] = Field(default_factory=list, description="List of active skill IDs")
+
 
 class AgentCreate(BaseModel):
     """Model for creating an agent"""

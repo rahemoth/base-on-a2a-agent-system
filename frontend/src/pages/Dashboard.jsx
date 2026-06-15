@@ -134,7 +134,7 @@ const Dashboard = () => {
               margin: 0,
               marginBottom: '0.25rem'
             }}>
-              A2A 多智能体系统
+              智能体协作系统
             </h1>
             <p style={{ 
               fontSize: '0.875rem', 

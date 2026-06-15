@@ -122,3 +122,47 @@ frontend/src/
 | `/api/mcp/agents/{id}/tools` | MCP 工具列表 |
 | `/api/rag/*` | RAG 系统 (compress, query, add, stats) |
 | `/health` | 健康检查 |
+
+## Skill System
+
+### 概述
+Agent Skill 系统提供预定义的技能加载（提示词 + 工具组合），支持从 Markdown 文件导入自定义技能。
+
+### API 端点
+| 路径 | 说明 |
+|------|------|
+| `/api/skills` | 列出所有可用技能 |
+| `/api/skills/import` | 从 JSON 导入单个技能 |
+| `/api/skills/import-file` | 从 .md 文件导入技能（支持预览） |
+| `/api/skills/parse` | 解析 Markdown 内容（不保存） |
+| `/api/skills/{id}` | 获取技能详情 |
+| `/api/agents/{id}/skills` | 获取 Agent 的活跃技能 |
+
+### 导入格式 (skill.md)
+```markdown
+---
+skill_id: my_skill
+name: 我的技能
+description: 技能描述
+category: custom
+tags:
+  - tag1
+  - tag2
+---
+
+## 技能提示词
+
+这里是技能的详细提示词内容...
+```
+
+### 内置技能
+- `code_review` - 代码审查
+- `translate` - 翻译助手
+- `summarize` - 摘要生成
+- `data_analysis` - 数据分析
+- `creative_writing` - 创意写作
+- `task_planning` - 任务规划
+
+### 示例文件
+- `docs/SKILL_IMPORT_SPEC.md` - 导入规范文档
+- `data/sample_skills.md` - 示例技能文件
