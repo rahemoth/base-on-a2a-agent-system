@@ -119,6 +119,55 @@ export const memoryService = {
   },
 };
 
+// RAG Memory System API
+export const ragService = {
+  async getStats(agentId) {
+    const response = await api.get(`/api/rag/stats/${agentId}`);
+    return response.data;
+  },
+
+  async queryMemory(agentId, query, k = 10, useGraphReasoning = false) {
+    const response = await api.post('/api/rag/query', null, {
+      params: {
+        agent_id: agentId,
+        query,
+        k,
+        use_graph_reasoning: useGraphReasoning,
+      },
+    });
+    return response.data;
+  },
+
+  async addDialogue(agentId, dialogue) {
+    const response = await api.post('/api/rag/add', dialogue, {
+      params: { agent_id: agentId },
+    });
+    return response.data;
+  },
+
+  async getEntityRelations(agentId, entityName) {
+    const response = await api.post(`/api/rag/entities/${agentId}`, null, {
+      params: { entity_name: entityName },
+    });
+    return response.data;
+  },
+
+  async clearMemory(agentId) {
+    const response = await api.delete(`/api/rag/clear/${agentId}`);
+    return response.data;
+  },
+
+  async getConfig() {
+    const response = await api.get('/api/rag/config');
+    return response.data;
+  },
+
+  async updateConfig(config) {
+    const response = await api.post('/api/rag/config', config);
+    return response.data;
+  },
+};
+
 // Agent Cognitive API
 export const cognitiveService = {
   async getCognitiveState(agentId) {

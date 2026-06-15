@@ -5,7 +5,7 @@ Combines HNSW vector search with inverted index for efficient retrieval
 import bisect
 from typing import List, Dict, Any, Optional, Set
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import numpy as np
 
 
@@ -429,17 +429,22 @@ class HybridRetrievalSystem:
         Here we use a heuristic combination of vector similarity
         and recency
         """
-        now = datetime.now()
-        
+        now = datetime.now(timezone.utc)
+
         for result in results:
             # Base score from vector similarity
             base_score = result["score"]
-            
+
             # Time decay (more recent = higher score)
-            timestamp = datetime.fromisoformat(result["timestamp"])
-            hours_ago = (now - timestamp).total_seconds() / 3600
-            time_decay = math.exp(-hours_ago / 168)  # Decay over 1 week
-            
+            try:
+                timestamp = datetime.fromisoformat(result["timestamp"])
+                if timestamp.tzinfo is None:
+                    timestamp = timestamp.replace(tzinfo=timezone.utc)
+                hours_ago = (now - timestamp).total_seconds() / 3600
+                time_decay = math.exp(-max(hours_ago, 0) / 168)  # Decay over 1 week
+            except (ValueError, TypeError):
+                time_decay = 0.5  # Default if timestamp is missing/invalid
+
             # Combine scores
             result["reranked_score"] = 0.7 * base_score + 0.3 * time_decay
             

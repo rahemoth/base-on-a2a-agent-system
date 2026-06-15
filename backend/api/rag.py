@@ -7,7 +7,7 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime
 
 from backend.models import AgentConfig, AgentResponse
-from backend.agents import agent_manager
+from backend.agents.a2a_manager import a2a_agent_manager
 from backend.config import settings
 
 router = APIRouter(prefix="/api/rag", tags=["rag"])
@@ -31,7 +31,7 @@ async def compress_dialogue(
         Compressed dialogue chunks with summaries
     """
     try:
-        agent = await agent_manager.get_agent(agent_id)
+        agent = await a2a_agent_manager.get_agent(agent_id)
         if not agent:
             raise HTTPException(status_code=404, detail="Agent not found")
         
@@ -89,7 +89,7 @@ async def query_memory(
         Retrieved memory results
     """
     try:
-        agent = await agent_manager.get_agent(agent_id)
+        agent = await a2a_agent_manager.get_agent(agent_id)
         if not agent:
             raise HTTPException(status_code=404, detail="Agent not found")
         
@@ -97,10 +97,9 @@ async def query_memory(
         if not agent.config.rag_enabled:
             raise HTTPException(status_code=400, detail="RAG is not enabled for this agent")
         
-        # Generate query embedding (simplified - would use actual embedding model in production)
-        import numpy as np
-        query_embedding = np.random.rand(768).astype(np.float32)
-        
+        # Generate query embedding using the agent's embedding service
+        query_embedding = await agent.memory.embedding_service.generate(query)
+
         # Query memory system
         result = await agent.memory.query(
             query_embedding=query_embedding,
@@ -133,7 +132,7 @@ async def add_memory(
         Memory addition result with statistics
     """
     try:
-        agent = await agent_manager.get_agent(agent_id)
+        agent = await a2a_agent_manager.get_agent(agent_id)
         if not agent:
             raise HTTPException(status_code=404, detail="Agent not found")
         
@@ -165,7 +164,7 @@ async def get_memory_stats(agent_id: str):
         Comprehensive memory statistics
     """
     try:
-        agent = await agent_manager.get_agent(agent_id)
+        agent = await a2a_agent_manager.get_agent(agent_id)
         if not agent:
             raise HTTPException(status_code=404, detail="Agent not found")
         
@@ -196,7 +195,7 @@ async def get_entity_relations(
         Entity relations
     """
     try:
-        agent = await agent_manager.get_agent(agent_id)
+        agent = await a2a_agent_manager.get_agent(agent_id)
         if not agent:
             raise HTTPException(status_code=404, detail="Agent not found")
         
@@ -223,7 +222,7 @@ async def clear_memory(agent_id: str):
         Success message
     """
     try:
-        agent = await agent_manager.get_agent(agent_id)
+        agent = await a2a_agent_manager.get_agent(agent_id)
         if not agent:
             raise HTTPException(status_code=404, detail="Agent not found")
         

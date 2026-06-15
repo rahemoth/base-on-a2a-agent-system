@@ -13,6 +13,7 @@ from openai import AsyncOpenAI
 
 from backend.models import AgentConfig, AgentStatus, Message, MessageRole, ModelProvider
 from backend.mcp import mcp_manager
+from backend.agents.memory import AgentMemory
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -37,6 +38,7 @@ class A2AAgent:
         self.openai_client = None
         self.conversation_history: List[Message] = []
         self.mcp_client = None
+        self.memory = AgentMemory(agent_id=agent_id)
         
     async def initialize(self, api_keys: Dict[str, Optional[str]] = None, base_urls: Dict[str, Optional[str]] = None):
         """Initialize the agent with appropriate client based on provider"""
@@ -140,6 +142,9 @@ class A2AAgent:
                         env=mcp_config.env
                     )
             
+            # Initialize memory system
+            await self.memory.initialize()
+
             self.status = AgentStatus.IDLE
             return True
         except Exception as e:
@@ -564,4 +569,7 @@ class A2AAgent:
         """Cleanup agent resources"""
         if self.mcp_client:
             await mcp_manager.remove_client(self.id)
+        if self.memory:
+            self.memory.clear_short_term_memory()
+            self.memory.clear_working_memory()
         self.status = AgentStatus.OFFLINE

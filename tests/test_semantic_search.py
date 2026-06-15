@@ -39,7 +39,7 @@ async def test_semantic_search():
         )
         print(f"  Added: {content[:50]}...")
     
-    print(f"\n[INFO] Vector index size: {memory.vector_index.size()}")
+    print(f"\n[INFO] RAG indexed documents: {memory.rag_system.retrieval_system.get_stats()['num_documents']}")
     
     # Test semantic search
     print("\n[TEST 1] Search: '你是谁'")

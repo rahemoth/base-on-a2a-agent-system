@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { X, Brain, Database, Wrench, Clock, TrendingUp, BarChart3, Target, MessageSquare, AlertCircle } from 'lucide-react';
-import { memoryService, cognitiveService, toolsService } from '../services/api';
+import { X, Brain, Database, Wrench, Clock, TrendingUp, BarChart3, Target, MessageSquare, AlertCircle, Search, Network, Layers, Gauge } from 'lucide-react';
+import { memoryService, cognitiveService, toolsService, ragService } from '../services/api';
 import { storageService } from '../services/storage';
 import './AgentInsightsModal.css';
 
@@ -25,6 +25,17 @@ const AgentInsightsModal = ({ agent, onClose }) => {
   const [tools, setTools] = useState([]);
   const [toolReport, setToolReport] = useState(null);
 
+  // RAG state
+  const [ragStats, setRagStats] = useState(null);
+  const [ragConfig, setRagConfig] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState(null);
+  const [searching, setSearching] = useState(false);
+  const [useGraphReasoning, setUseGraphReasoning] = useState(false);
+  const [entityName, setEntityName] = useState('');
+  const [entityRelations, setEntityRelations] = useState(null);
+  const [queryingEntity, setQueryingEntity] = useState(false);
+
   useEffect(() => {
     loadData();
   }, [activeTab, agent.id]);
@@ -45,6 +56,19 @@ const AgentInsightsModal = ({ agent, onClose }) => {
         setLongTermMemory(longTerm.memories || []);
         setTaskHistory(tasks.tasks || []);
         setEnvironmentContext(env.context || {});
+
+        // Load RAG stats/config separately so failures don't block basic memory
+        try {
+          const [stats, config] = await Promise.all([
+            ragService.getStats(agent.id),
+            ragService.getConfig(),
+          ]);
+          setRagStats(stats.stats || null);
+          setRagConfig(config.config || null);
+        } catch (ragErr) {
+          console.warn('RAG stats unavailable:', ragErr);
+          setRagStats(null);
+        }
       } else if (activeTab === 'cognitive') {
         const [state, reasoning, plan, feedback] = await Promise.all([
           cognitiveService.getCognitiveState(agent.id),
@@ -80,7 +104,7 @@ const AgentInsightsModal = ({ agent, onClose }) => {
 
   const handleClearShortTermMemory = async () => {
     if (!confirm('确定要清除短期记忆吗？')) return;
-    
+
     try {
       await memoryService.clearShortTermMemory(agent.id);
       loadData();
@@ -89,13 +113,117 @@ const AgentInsightsModal = ({ agent, onClose }) => {
     }
   };
 
+  const handleSemanticSearch = async (e) => {
+    if (e) e.preventDefault();
+    if (!searchQuery.trim()) return;
+    setSearching(true);
+    try {
+      const res = await ragService.queryMemory(agent.id, searchQuery.trim(), 10, useGraphReasoning);
+      setSearchResults(res.results || []);
+    } catch (err) {
+      console.error('Semantic search failed:', err);
+      alert('语义搜索失败: ' + (err.response?.data?.detail || err.message));
+      setSearchResults([]);
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const handleEntityQuery = async (e) => {
+    if (e) e.preventDefault();
+    if (!entityName.trim()) return;
+    setQueryingEntity(true);
+    try {
+      setEntityRelations(await ragService.getEntityRelations(agent.id, entityName.trim()));
+    } catch (err) {
+      console.error('Entity query failed:', err);
+      alert('实体查询失败: ' + (err.response?.data?.detail || err.message));
+      setEntityRelations(null);
+    } finally {
+      setQueryingEntity(false);
+    }
+  };
+
   const formatTimestamp = (timestamp) => {
     if (!timestamp) return 'N/A';
     return new Date(timestamp).toLocaleString('zh-CN');
   };
 
+  // Extract key numeric metrics from the RAG stats payload
+  const getRagMetrics = () => {
+    if (!ragStats) return [];
+    const r = ragStats.retrieval || {}, g = ragStats.graph || {}, c = ragStats.compression || {};
+    const cache = ragStats.optimization?.cache || {}, v = r.vector_index_stats || {};
+    const m = [];
+    m.push({ icon: <Database size={20} />, value: r.num_documents ?? 0, label: '检索文档数' });
+    m.push({ icon: <Layers size={20} />, value: v.node_count ?? 0, label: '向量索引节点' });
+    m.push({ icon: <Network size={20} />, value: g.num_entities ?? 0, label: '图谱实体数' });
+    m.push({ icon: <Network size={20} />, value: g.num_relations ?? 0, label: '图谱关系数' });
+    if (c.compression_ratio !== undefined) m.push({ icon: <Gauge size={20} />, value: `${(c.compression_ratio * 100).toFixed(0)}%`, label: '压缩比' });
+    if (cache.hit_rate !== undefined) m.push({ icon: <Gauge size={20} />, value: `${(cache.hit_rate * 100).toFixed(0)}%`, label: '缓存命中率' });
+    return m;
+  };
+
   const renderMemoryTab = () => (
     <div className="insights-content">
+      {/* RAG 统计概览 */}
+      <div className="insights-section">
+        <div className="section-header">
+          <h3><BarChart3 size={18} /> RAG 记忆系统概览</h3>
+          {ragConfig && (
+            <span className="rag-dim-badge">
+              向量维度 {ragConfig.embedding_dimension} · 压缩比 {((ragConfig.compression_target || 0) * 100).toFixed(0)}%
+            </span>
+          )}
+        </div>
+        {ragStats ? (
+          <div className="rag-stats-grid">
+            {getRagMetrics().map((m, idx) => (
+              <div key={idx} className="rag-stat-card">
+                <div className="rag-stat-icon">{m.icon}</div>
+                <div className="rag-stat-value">{m.value}</div>
+                <div className="rag-stat-label">{m.label}</div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="empty-message">RAG 统计暂不可用（agent 可能未启用 RAG 或尚未初始化）</p>
+        )}
+      </div>
+
+      {/* 语义搜索 */}
+      <div className="insights-section">
+        <div className="section-header">
+          <h3><Search size={18} /> 语义搜索</h3>
+        </div>
+        <form className="rag-search-bar" onSubmit={handleSemanticSearch}>
+          <input type="text" className="rag-search-input" placeholder="输入查询内容，从长期记忆中语义检索..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+          <label className="rag-search-toggle">
+            <input type="checkbox" checked={useGraphReasoning} onChange={(e) => setUseGraphReasoning(e.target.checked)} />
+            图谱推理
+          </label>
+          <button type="submit" className="btn btn-primary btn-sm" disabled={searching}>{searching ? '搜索中...' : '搜索'}</button>
+        </form>
+        {searchResults !== null && (
+          <div className="search-results">
+            {searchResults.length === 0 ? (
+              <p className="empty-message">未找到相关记忆</p>
+            ) : (
+              searchResults.map((r, idx) => (
+                <div key={idx} className="search-result-item">
+                  <div className="search-result-header">
+                    <span className="search-result-rank">#{idx + 1}</span>
+                    {r.metadata?.memory_type && <span className="memory-type">{r.metadata.memory_type}</span>}
+                    {r.score !== undefined && <span className="search-result-score">相似度: {(r.score * 100).toFixed(1)}%</span>}
+                    {r.timestamp && <span className="memory-time">{formatTimestamp(r.timestamp)}</span>}
+                  </div>
+                  <div className="memory-content">{r.content}</div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+      </div>
       <div className="insights-section">
         <div className="section-header">
           <h3><MessageSquare size={18} /> 短期记忆 ({shortTermMemory.length})</h3>
@@ -141,6 +269,37 @@ const AgentInsightsModal = ({ agent, onClose }) => {
             ))
           )}
         </div>
+      </div>
+
+      {/* 实体关系 */}
+      <div className="insights-section">
+        <div className="section-header">
+          <h3><Network size={18} /> 实体关系图谱</h3>
+        </div>
+        <form className="rag-search-bar" onSubmit={handleEntityQuery}>
+          <input type="text" className="rag-search-input" placeholder="输入实体名称，查询其在记忆图谱中的关系..." value={entityName} onChange={(e) => setEntityName(e.target.value)} />
+          <button type="submit" className="btn btn-primary btn-sm" disabled={queryingEntity}>{queryingEntity ? '查询中...' : '查询'}</button>
+        </form>
+        {entityRelations && (
+          <div className="entity-relations">
+            <div className="entity-summary">
+              实体 <strong>{entityRelations.entity_name}</strong> 共有 <strong>{entityRelations.num_relations ?? 0}</strong> 条关系
+            </div>
+            {entityRelations.relations?.length > 0 ? (
+              <div className="relations-list">
+                {entityRelations.relations.map((rel, idx) => (
+                  <div key={idx} className="relation-item">
+                    <span className="relation-type">{rel.relation_type || rel.type || '关联'}</span>
+                    <span className="relation-target">→ {rel.target_name || rel.target_id || rel.name || JSON.stringify(rel)}</span>
+                    {rel.weight !== undefined && <span className="relation-weight">权重 {rel.weight}</span>}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="empty-message">该实体暂无关系记录</p>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="insights-section">

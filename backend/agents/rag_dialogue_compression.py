@@ -478,8 +478,7 @@ class LLMEnhancedDialogueCompressor(HierarchicalDialogueCompressor):
             return ""
             
         # Format dialogue for summarization
-        dialogue_text = "
-".join([
+        dialogue_text = "\n".join([
             f"{turn.get('role', '')}: {turn.get('content', '')}"
             for turn in chunk.turns
         ])
@@ -621,8 +620,7 @@ class LLMEnhancedDialogueCompressor(HierarchicalDialogueCompressor):
         Returns:
             Full summary string
         """
-        chunk_summaries = "
-".join([
+        chunk_summaries = "\n".join([
             f"Chunk {i+1}: {chunk.summary}"
             for i, chunk in enumerate(chunks)
         ])

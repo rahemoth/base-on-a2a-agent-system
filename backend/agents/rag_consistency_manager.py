@@ -6,6 +6,7 @@ from typing import List, Dict, Any, Optional, Tuple, Literal
 from dataclasses import dataclass, field
 from datetime import datetime
 import hashlib
+import numpy as np
 
 
 @dataclass

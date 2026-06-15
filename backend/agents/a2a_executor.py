@@ -3,7 +3,7 @@ A2A Agent Executor implementation using the official a2a-sdk
 """
 import uuid
 import logging
-import aiosqlite
+
 from typing import Optional, Dict, Any, List
 from datetime import datetime
 
@@ -1016,17 +1016,8 @@ Based on these memories, you should:
         return " | ".join([f"{k}:{v}" for k, v in merged.items()])
     
     async def _update_memory(self, memory_id: int, content: str, importance: float):
-        """Update existing memory in database"""
-        try:
-            async with aiosqlite.connect(self.memory.db_path) as db:
-                await db.execute("""
-                    UPDATE long_term_memory 
-                    SET content = ?, importance = ?, accessed_count = accessed_count + 1
-                    WHERE id = ?
-                """, (content, importance, memory_id))
-                await db.commit()
-        except Exception as e:
-            logger.error(f"Error updating memory: {e}")
+        """Update existing memory in database and re-index in RAG subsystem"""
+        await self.memory.update_long_term(memory_id, content, importance)
     
     def _detect_role_assignment(self, message: str) -> Optional[str]:
         """Detect if user is assigning or removing a role to the AI"""

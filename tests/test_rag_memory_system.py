@@ -596,8 +596,8 @@ class TestPerformanceOptimizer:
             
         # Execute query
         result = optimizer.optimize_query(
-            query_hash="test_query",
-            query_func=test_query_func,
+            "test_query",
+            test_query_func,
             5
         )
         
@@ -605,8 +605,8 @@ class TestPerformanceOptimizer:
         
         # Second call should hit cache
         result2 = optimizer.optimize_query(
-            query_hash="test_query",
-            query_func=test_query_func,
+            "test_query",
+            test_query_func,
             5
         )
         
