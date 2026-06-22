@@ -72,7 +72,7 @@ class VectorClock:
     def is_before(self, other_clock: 'VectorClock') -> Optional[bool]:
         """
         Check if this clock is before other clock
-        
+
         Returns:
             - True if this < other
             - False if this > other
@@ -80,16 +80,21 @@ class VectorClock:
         """
         all_le = True
         any_lt = False
-        
-        for replica_id, timestamp in self.clock.items():
+
+        # Compare across the union of replicas in both clocks. Only iterating
+        # self.clock misses replicas that exist solely in other_clock, which
+        # would leave them treated as 0 on both sides and skew the result.
+        all_replicas = set(self.clock) | set(other_clock.clock)
+        for replica_id in all_replicas:
+            timestamp = self.clock.get(replica_id, 0)
             other_timestamp = other_clock.clock.get(replica_id, 0)
-            
+
             if timestamp > other_timestamp:
                 all_le = False
-                
+
             if timestamp < other_timestamp:
                 any_lt = True
-                
+
         if all_le and any_lt:
             return True
         elif not all_le and any_lt:
@@ -197,7 +202,7 @@ class SemanticRelationClassifier:
             words_new = set(new_lower.split())
             
             overlap = words_existing & words_new
-            overlap_ratio = len(overlap) / max(len(words_existing), len(words_new))
+            overlap_ratio = len(overlap) / max(len(words_existing), len(words_new), 1)
             
             if overlap_ratio > 0.5:
                 return "UPDATE"
@@ -489,6 +494,3 @@ class ConsistencyManager:
                 f.access_count for f in self.facts.values()
             ) / max(len(self.facts), 1)
         }
-
-
-import numpy as np

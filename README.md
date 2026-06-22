@@ -55,8 +55,6 @@
 
 ## 快速开始
 
-> **注意**: 如果你遇到 agent 无法响应的问题，请查看 [LM Studio 集成修复文档](docs/LM_STUDIO_FIX.md) 了解详情。
-
 ### 前置要求
 - Python 3.10+
 - Node.js 18+
@@ -458,7 +456,6 @@ npm run build
 1. 确保 LM Studio/LocalAI 等本地服务正在运行
 2. 检查 API 端点配置是否正确（默认 LM Studio: `http://localhost:1234/v1`）
 3. 查看后端日志中的连接错误
-4. 参阅 [LM Studio 集成修复文档](docs/LM_STUDIO_FIX.md)
 
 ### 连接错误 (Connection Error)
 **问题**: 后端日志显示 "Connection error" 或 "All connection attempts failed"

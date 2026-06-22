@@ -3,6 +3,7 @@ Memory Graph Database
 Implements a knowledge graph for multi-hop reasoning and entity relationships
 """
 import heapq
+import math
 from typing import List, Dict, Any, Optional, Set, Tuple
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -240,6 +241,16 @@ class MemoryGraph:
         """Get a relation by ID"""
         return self.relations.get(relation_id)
 
+    def get_stats(self) -> Dict[str, Any]:
+        """Get graph statistics"""
+        return {
+            "num_entities": len(self.entities),
+            "num_relations": len(self.relations),
+            "avg_degree": sum(
+                len(neighbors) for neighbors in self.outgoing.values()
+            ) / max(len(self.entities), 1)
+        }
+
 
 class BeamSearchPathFinder:
     """
@@ -342,29 +353,35 @@ class BeamSearchPathFinder:
         
         beam = [initial_path]
         visited_paths = set()
-        
+        # Collect every path discovered across all hops. The previous code
+        # reassigned ``beam`` to only the newly extended paths each round, so
+        # once a path reached a dead-end (no outgoing edges) it was dropped
+        # and the final ``beam`` could be empty even though valid paths had
+        # been found. Keep them all and return the best at the end.
+        all_discovered: List[Path] = []
+
         for hop in range(self.max_hops):
             new_beam = []
-            
+
             for path in beam:
                 current_entity_id = path.nodes[-1]
-                
+
                 # Get neighbors
                 neighbors = graph.outgoing.get(current_entity_id, [])
-                
+
                 for target_id, relation_id in neighbors:
                     # Skip if already in path
                     if target_id in path.nodes:
                         continue
-                        
+
                     target_entity = graph.entities.get(target_id)
                     if not target_entity:
                         continue
-                        
+
                     relation = graph.relations.get(relation_id)
                     if not relation:
                         continue
-                        
+
                     # Calculate heuristic
                     heuristic_score = self._calculate_heuristic(
                         query_embedding,
@@ -372,7 +389,7 @@ class BeamSearchPathFinder:
                         path.total_weight * relation.weight,
                         hop + 1
                     )
-                    
+
                     # Create new path
                     new_path = Path(
                         nodes=path.nodes + [target_id],
@@ -380,23 +397,32 @@ class BeamSearchPathFinder:
                         total_weight=path.total_weight * relation.weight,
                         semantic_score=heuristic_score
                     )
-                    
+
                     # Skip if we've seen this path
                     path_signature = tuple(new_path.nodes)
                     if path_signature in visited_paths:
                         continue
                     visited_paths.add(path_signature)
-                    
+
                     new_beam.append(new_path)
-                    
-            # Keep top-b paths
+                    all_discovered.append(new_path)
+
+            # Keep top-b paths for the next expansion round
             beam = heapq.nlargest(
                 self.beam_width,
                 new_beam,
                 key=lambda p: p.semantic_score
             )
-            
-        return beam
+
+        # Prefer longer paths (multi-hop reasoning aims to reach distant
+        # entities), breaking ties by semantic score. Sorting purely by
+        # semantic_score favored short 2-hop paths over the full chain because
+        # the hop penalty drove longer paths' scores down.
+        return sorted(
+            all_discovered or beam,
+            key=lambda p: (len(p.nodes), p.semantic_score),
+            reverse=True,
+        )[:self.beam_width]
         
     def explain_path(
         self,
@@ -507,6 +533,3 @@ class MemoryGraphQueryEngine:
                 len(neighbors) for neighbors in self.graph.outgoing.values()
             ) / max(len(self.graph.entities), 1)
         }
-
-
-import math

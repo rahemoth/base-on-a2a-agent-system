@@ -3,10 +3,23 @@ Hybrid Retrieval System
 Combines HNSW vector search with inverted index for efficient retrieval
 """
 import bisect
+import json
+import math
+import re
+import logging
 from typing import List, Dict, Any, Optional, Set
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 import numpy as np
+
+logger = logging.getLogger(__name__)
+
+try:
+    import chromadb
+    _CHROMA_AVAILABLE = True
+except ImportError:
+    chromadb = None
+    _CHROMA_AVAILABLE = False
 
 
 @dataclass
@@ -47,15 +60,22 @@ class TimeBPlusTree:
         
     def _compare_time(self, time1: str, time2: str) -> int:
         """Compare two timestamp strings"""
-        dt1 = datetime.fromisoformat(time1)
-        dt2 = datetime.fromisoformat(time2)
-        
+        dt1 = self._normalize_dt(datetime.fromisoformat(time1))
+        dt2 = self._normalize_dt(datetime.fromisoformat(time2))
+
         if dt1 < dt2:
             return -1
         elif dt1 > dt2:
             return 1
         else:
             return 0
+
+    @staticmethod
+    def _normalize_dt(dt: datetime) -> datetime:
+        """Assume naive timestamps are UTC so naive/aware values can be compared."""
+        if dt.tzinfo is None:
+            return dt.replace(tzinfo=timezone.utc)
+        return dt
             
     def insert(self, doc_id: str, timestamp: str):
         """Insert a document ID into the tree"""
@@ -204,6 +224,156 @@ class InvertedIndex:
         return keywords
 
 
+def _sanitize_collection_name(agent_id: str) -> str:
+    """ChromaDB collection names must match ^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$."""
+    safe = re.sub(r"[^a-zA-Z0-9._-]", "_", agent_id)
+    if not safe or not safe[0].isalnum():
+        safe = "a" + safe
+    return ("agent_memory_" + safe)[:63]
+
+
+class ChromaVectorBackend:
+    """
+    Persistent vector backend backed by ChromaDB.
+
+    Mirrors the HNSWIndex interface (add_vector / search / delete_vector /
+    get_stats) so HybridRetrievalSystem can swap it in transparently.
+    Embeddings are pre-computed by EmbeddingService and passed in — ChromaDB
+    is used purely as a store + ANN index, not as an embedding generator.
+
+    Metadata stored per document includes the JSON-serialized entities and
+    relations so the MemoryGraph can be rebuilt from disk on restart.
+    """
+
+    def __init__(self, persist_dir: str, collection_name: str, dimension: int):
+        if not _CHROMA_AVAILABLE:
+            raise RuntimeError("chromadb is not installed")
+
+        self.dimension = dimension
+        self._client = chromadb.PersistentClient(path=persist_dir)
+        self._collection = self._client.get_or_create_collection(
+            name=collection_name,
+            metadata={"hnsw:space": "cosine"},
+        )
+        self.node_count = self._collection.count()
+
+    def add_vector(
+        self,
+        node_id: str,
+        vector: np.ndarray,
+        metadata: Optional[Dict[str, Any]] = None,
+    ):
+        """Add or upsert a vector with metadata."""
+        meta = self._serialize_metadata(metadata or {})
+        self._collection.upsert(
+            ids=[node_id],
+            embeddings=[np.asarray(vector, dtype=np.float32).tolist()],
+            metadatas=[meta],
+            documents=[meta.get("content", "")],
+        )
+        self.node_count = self._collection.count()
+
+    def search(
+        self,
+        query_vector: np.ndarray,
+        k: int = 10,
+        filters: Optional[Dict[str, Any]] = None,
+    ) -> List[Dict[str, Any]]:
+        """Return up to k nearest neighbors as [{node_id, distance, metadata}] (near→far)."""
+        if self.node_count == 0:
+            return []
+        n_results = min(k, self.node_count)
+        try:
+            qr = self._collection.query(
+                query_embeddings=[np.asarray(query_vector, dtype=np.float32).tolist()],
+                n_results=n_results,
+            )
+        except Exception as e:
+            logger.warning(f"ChromaDB query failed: {e}")
+            return []
+
+        ids = (qr.get("ids") or [[]])[0]
+        distances = (qr.get("distances") or [[]])[0]
+        metadatas = (qr.get("metadatas") or [[]])[0]
+
+        results = []
+        for node_id, dist, meta in zip(ids, distances, metadatas):
+            results.append({
+                "node_id": node_id,
+                "distance": float(dist),
+                "metadata": self._deserialize_metadata(meta),
+            })
+        # ChromaDB returns ascending distance (nearest first) already
+        return results
+
+    def delete_vector(self, node_id: str):
+        """Remove a vector by id."""
+        try:
+            self._collection.delete(ids=[node_id])
+        except Exception as e:
+            logger.warning(f"ChromaDB delete failed: {e}")
+        self.node_count = self._collection.count()
+
+    def get_all(self) -> List[Dict[str, Any]]:
+        """Return all stored documents with metadata + embeddings (for graph rebuild and brute-force search on load)."""
+        if self.node_count == 0:
+            return []
+        try:
+            data = self._collection.get(include=["metadatas", "documents", "embeddings"])
+        except Exception as e:
+            logger.warning(f"ChromaDB get all failed: {e}")
+            return []
+
+        ids = data.get("ids", [])
+        metadatas = data.get("metadatas", [])
+        documents = data.get("documents", [])
+        embeddings = data.get("embeddings", [])
+        out = []
+        for idx, meta in enumerate(metadatas):
+            m = self._deserialize_metadata(meta)
+            entry = {"id": ids[idx] if idx < len(ids) else "", "metadata": m}
+            if idx < len(embeddings) and embeddings[idx] is not None:
+                entry["embedding"] = np.asarray(embeddings[idx], dtype=np.float32)
+            if idx < len(documents) and documents[idx]:
+                entry["metadata"].setdefault("content", documents[idx])
+            out.append(entry)
+        return out
+
+    def get_stats(self) -> Dict[str, Any]:
+        return {
+            "node_count": self.node_count,
+            "backend": "chromadb",
+            "collection": self._collection.name,
+        }
+
+    @staticmethod
+    def _serialize_metadata(metadata: Dict[str, Any]) -> Dict[str, Any]:
+        """ChromaDB metadata values must be primitives — JSON-encode nested structures."""
+        flat = {}
+        for k, v in metadata.items():
+            if v is None:
+                continue
+            if isinstance(v, (str, int, float, bool)):
+                flat[k] = v
+            else:
+                flat[k] = json.dumps(v, ensure_ascii=False)
+        return flat
+
+    @staticmethod
+    def _deserialize_metadata(metadata: Dict[str, Any]) -> Dict[str, Any]:
+        """Reverse of _serialize_metadata: try parsing JSON-encoded fields back."""
+        out = {}
+        for k, v in (metadata or {}).items():
+            if isinstance(v, str) and v and v[0] in "[{":
+                try:
+                    out[k] = json.loads(v)
+                    continue
+                except (json.JSONDecodeError, TypeError):
+                    pass
+            out[k] = v
+        return out
+
+
 class HybridRetrievalSystem:
     """
     Hybrid retrieval system combining vector search and metadata filtering
@@ -221,16 +391,73 @@ class HybridRetrievalSystem:
     def __init__(
         self,
         dimension: int,
-        candidate_threshold: int = 3000
+        candidate_threshold: int = 3000,
+        chroma_persist_dir: Optional[str] = None,
+        collection_name: Optional[str] = None,
     ):
         from .rag_vector_index import HNSWIndex
-        
-        self.vector_index = HNSWIndex(dimension=dimension)
+
+        self.dimension = dimension
         self.inverted_index = InvertedIndex()
         self.time_index = TimeBPlusTree()
-        
+
         self.documents: Dict[str, Document] = {}
         self.candidate_threshold = candidate_threshold
+        self._backend = "hnsw"
+
+        # Use ChromaDB if requested and available; otherwise fall back to HNSW
+        if chroma_persist_dir and collection_name and _CHROMA_AVAILABLE:
+            try:
+                self.vector_index = ChromaVectorBackend(
+                    persist_dir=chroma_persist_dir,
+                    collection_name=collection_name,
+                    dimension=dimension,
+                )
+                self._backend = "chroma"
+                self._rebuild_from_chroma()
+            except Exception as e:
+                logger.warning(
+                    f"ChromaDB backend init failed, falling back to HNSW: {e}"
+                )
+                self.vector_index = HNSWIndex(dimension=dimension)
+                self._backend = "hnsw"
+        else:
+            if chroma_persist_dir and not _CHROMA_AVAILABLE:
+                logger.warning(
+                    "chroma_persist_dir set but chromadb not installed; using HNSW"
+                )
+            self.vector_index = HNSWIndex(dimension=dimension)
+
+    def _rebuild_from_chroma(self) -> None:
+        """Repopulate in-memory documents/inverted/time indexes from ChromaDB on startup."""
+        if self._backend != "chroma":
+            return
+        for item in self.vector_index.get_all():
+            doc_id = item["id"]
+            meta = item.get("metadata", {})
+            content = meta.get("content", "")
+            entities = meta.get("entities", []) or []
+            if isinstance(entities, str):
+                entities = []
+            timestamp = meta.get("timestamp") or datetime.now().isoformat()
+            embedding = item.get("embedding")
+            if embedding is None:
+                embedding = np.zeros(self.dimension, dtype=np.float32)
+            doc = Document(
+                doc_id=doc_id,
+                content=content,
+                embedding=embedding,
+                entities=entities if isinstance(entities, list) else [],
+                timestamp=timestamp,
+                metadata={k: v for k, v in meta.items()
+                          if k not in ("content", "entities", "timestamp")},
+            )
+            self.documents[doc_id] = doc
+            self.inverted_index.add_document(doc)
+            self.time_index.insert(doc_id, doc.timestamp)
+
+    def get_backend_type(self) -> str:
+        return self._backend
         
     def add_document(
         self,
@@ -260,10 +487,17 @@ class HybridRetrievalSystem:
             timestamp=timestamp or datetime.now().isoformat(),
             metadata=metadata or {}
         )
-        
-        # Add to all indexes
+
+        # Add to all indexes. Include content/entities/timestamp in the
+        # vector-index metadata so the ChromaDB backend can persist them and
+        # the MemoryGraph can be rebuilt from disk on restart.
+        backend_meta = dict(doc.metadata)
+        backend_meta["content"] = content
+        backend_meta["entities"] = list(doc.entities)
+        backend_meta["timestamp"] = doc.timestamp
+
         self.documents[doc_id] = doc
-        self.vector_index.add_vector(doc_id, embedding, metadata)
+        self.vector_index.add_vector(doc_id, embedding, backend_meta)
         self.inverted_index.add_document(doc)
         self.time_index.insert(doc_id, doc.timestamp)
         
@@ -481,6 +715,3 @@ class HybridRetrievalSystem:
             "vector_index_stats": self.vector_index.get_stats(),
             "candidate_threshold": self.candidate_threshold
         }
-
-
-import math

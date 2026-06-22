@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     # Compression Model Configuration (for RAG context compression)
     compression_api_key: Optional[str] = None
     compression_base_url: Optional[str] = None
-    compression_model: str = "gpt-5.4"
+    compression_model: str = "glm-4.5-air"
     compression_max_tokens: int = 500
     compression_temperature: float = 0.3
     
@@ -49,7 +49,18 @@ class Settings(BaseSettings):
     rag_compression_target: float = 0.3
     rag_max_context_chunks: int = 10
     rag_embedding_dimension: int = 768
-    
+
+    # ChromaDB vector store (persistent vector index for RAG)
+    chroma_persist_dir: str = "./data/chroma"
+
+    # LLM-based entity/relation extraction for the RAG memory graph.
+    # The LLM client is the agent's own (per-provider), so no separate
+    # api_key/base_url here — only model + sampling defaults.
+    entity_extraction_enabled: bool = False
+    entity_extraction_model: str = "gpt-4o-mini"
+    entity_extraction_max_tokens: int = 800
+    entity_extraction_temperature: float = 0.2
+
     class Config:
         env_file = ".env"
         case_sensitive = False

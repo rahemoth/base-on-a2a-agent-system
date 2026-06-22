@@ -43,6 +43,25 @@ class HNSWLayer:
         """Add a node to this layer with its connections"""
         self.nodes[node.id] = node
         self.graph[node.id] = neighbors[:self.max_connections]
+
+    def connect_back(self, node_id: str, neighbor_id: str):
+        """Add a reverse edge so the graph is bidirectional, pruning to max_connections."""
+        if node_id == neighbor_id:
+            return
+        adj = self.graph.get(neighbor_id)
+        if adj is None:
+            adj = []
+            self.graph[neighbor_id] = adj
+        if node_id in adj:
+            return
+        adj.append(node_id)
+        if len(adj) > self.max_connections:
+            neighbor_node = self.nodes.get(neighbor_id)
+            if neighbor_node is not None:
+                adj.sort(key=lambda nid: float(np.linalg.norm(
+                    neighbor_node.vector - self.nodes[nid].vector
+                )) if nid in self.nodes else float('inf'))
+            self.graph[neighbor_id] = adj[:self.max_connections]
         
     def get_node(self, node_id: str) -> Optional[VectorNode]:
         """Get a node by ID"""
@@ -108,7 +127,7 @@ class HNSWLayer:
                     if len(result_set) > ef:
                         heapq.heappop(result_set)
                         
-        return [(node_id, -dist) for dist, node_id in sorted(result_set, key=lambda x: x[0])]
+        return [(node_id, -neg_dist) for neg_dist, node_id in sorted(result_set, key=lambda x: -x[0])]
 
 
 class HNSWIndex:
@@ -159,40 +178,18 @@ class HNSWIndex:
         M: int
     ) -> List[str]:
         """
-        Select best neighbors using heuristic selection
-        
-        Args:
-            candidates: List of (node_id, distance) tuples
-            M: Maximum number of neighbors
-            
-        Returns:
-            List of selected node IDs
+        Select neighbors for a newly inserted node.
+
+        Uses the simple selection strategy from the HNSW paper: keep the M
+        closest candidates. The previous heuristic here discarded most
+        candidates and produced a disconnected graph (many nodes ended up
+        with degree 0), so searches could not reach them.
         """
         if not candidates:
             return []
-            
+
         candidates = sorted(candidates, key=lambda x: x[1])
-        selected = []
-        discarded = []
-        
-        for node_id, dist in candidates[:M]:
-            selected.append((node_id, dist))
-            
-        for node_id, dist in candidates[M:]:
-            discarded.append((node_id, dist))
-            
-        # Check if any discarded node is closer to selected nodes
-        final_neighbors = []
-        for node_id, dist in selected:
-            is_closest = True
-            for other_id, other_dist in discarded:
-                if other_dist < dist * 1.2:  # 20% tolerance
-                    is_closest = False
-                    break
-            if is_closest:
-                final_neighbors.append(node_id)
-                
-        return final_neighbors
+        return [node_id for node_id, _ in candidates[:M]]
         
     def add_vector(
         self,
@@ -218,47 +215,70 @@ class HNSWIndex:
         )
         
         level = self._get_random_level()
-        
+
         # Ensure layers exist up to target level
         while len(self.layers) <= level:
             new_layer = HNSWLayer(len(self.layers), self.M)
             self.layers.append(new_layer)
-            
-        # Set entry point if first node
+
+        # First node: just seed the entry point
         if self.entry_point is None:
+            for current_level in range(level, -1, -1):
+                self.layers[current_level].add_node(node, [])
             self.entry_point = node_id
-            
-        # Add node to layers from top down
+            self.max_level = level
+            self.node_count += 1
+            return
+
+        # For levels above the current max_level, the node has no neighbors yet
+        # (no other node exists that high). Seed them and raise the entry point.
+        old_entry_point = self.entry_point
+        if level > self.max_level:
+            for current_level in range(level, self.max_level, -1):
+                self.layers[current_level].add_node(node, [])
+            self.entry_point = node_id
+            self.max_level = level
+
+        # Greedy descent from the top layer down to layer 0, inserting the node
+        # with bidirectional connections at every layer <= level.
+        #
+        # Start the descent from the previous entry point (which exists in the
+        # lower layers) rather than the just-promoted new node, otherwise the
+        # layer-0 search would start from a node that doesn't exist there yet
+        # and return no candidates — stranding the new node with no neighbors.
+        current_point = old_entry_point
         for current_level in range(min(level, self.max_level), -1, -1):
             layer = self.layers[current_level]
-            
-            # Find closest nodes
-            if current_level == self.max_level:
-                candidates = layer.get_closest_nodes(
-                    node.vector,
-                    self.entry_point,
-                    self.ef_construction
-                )
-            else:
-                # Use entry point from upper layer
-                upper_entry = self.entry_point
-                candidates = layer.get_closest_nodes(
-                    node.vector,
-                    upper_entry,
-                    self.ef_construction
-                )
-                
-            # Select neighbors
-            neighbors = self._select_neighbors_heuristic(candidates, self.M)
-            
-            # Add node to layer
-            layer.add_node(node, neighbors)
-            
-            # Update entry point
-            if current_level > self.max_level:
-                self.entry_point = node_id
-                self.max_level = current_level
-                
+
+            # Find closest existing nodes to use as neighbors
+            candidates = layer.get_closest_nodes(
+                node.vector,
+                current_point,
+                self.ef_construction
+            )
+
+            # Select neighbors via heuristic, excluding self (no self-loops)
+            neighbor_ids = [
+                nid for nid in self._select_neighbors_heuristic(candidates, self.M)
+                if nid != node_id
+            ]
+
+            # Add the node to this layer
+            layer.add_node(node, neighbor_ids)
+
+            # Bidirectional: add reverse edges so the graph is navigable
+            for neighbor_id in neighbor_ids:
+                layer.connect_back(node.id, neighbor_id)
+
+            # Refine the entry point for the next lower layer
+            if candidates:
+                # Skip self if it somehow appears as a candidate
+                next_point = candidates[0][0]
+                if next_point == node_id and len(candidates) > 1:
+                    next_point = candidates[1][0]
+                if next_point != node_id:
+                    current_point = next_point
+
         self.node_count += 1
         
     def search(

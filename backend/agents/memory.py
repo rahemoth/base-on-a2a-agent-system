@@ -35,7 +35,12 @@ class AgentMemory:
         db_path: str = "./data/agent_memory.db",
         embedding_api_key: str = None,
         embedding_api_base_url: str = None,
-        embedding_dimension: int = 768
+        embedding_dimension: int = 768,
+        chroma_persist_dir: str = None,
+        entity_extraction_enabled: bool = False,
+        entity_extraction_model: str = "gpt-4o-mini",
+        entity_extraction_max_tokens: int = 800,
+        entity_extraction_temperature: float = 0.2,
     ):
         self.agent_id = agent_id
         self.short_term_capacity = short_term_capacity
@@ -60,11 +65,21 @@ class AgentMemory:
 
         # Unified RAG subsystem
         self.rag_system = RAGMemorySystem(
-            embedding_dimension=embedding_dimension
+            embedding_dimension=embedding_dimension,
+            agent_id=agent_id,
+            chroma_persist_dir=chroma_persist_dir,
+            entity_extraction_enabled=entity_extraction_enabled,
+            entity_extraction_model=entity_extraction_model,
+            entity_extraction_max_tokens=entity_extraction_max_tokens,
+            entity_extraction_temperature=entity_extraction_temperature,
         )
 
         # Cache for embeddings (avoid recomputation)
         self._embedding_cache: Dict[str, Any] = {}
+
+    def set_llm_client(self, client: Any) -> None:
+        """Inject an LLM client (AsyncOpenAI-compatible) into the RAG subsystem."""
+        self.rag_system.set_llm_client(client)
 
     async def initialize(self):
         """Initialize the memory database and load records into RAG subsystem"""
@@ -549,7 +564,7 @@ class AgentMemory:
                 emb = await self.embedding_service.generate(content)
                 embeddings.append(emb)
 
-        return self.rag_system.add_dialogue(dialogue, embeddings)
+        return await self.rag_system.add_dialogue(dialogue, embeddings)
 
     async def query(
         self,

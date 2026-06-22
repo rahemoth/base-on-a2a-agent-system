@@ -563,9 +563,11 @@ class TestPerformanceOptimizer:
         decoded = quantizer.decode(codes)
         assert decoded.shape == (10, 128)
         
-        # Check compression ratio
+        # Check compression ratio: original is dimension * 4 bytes (32-bit),
+        # quantized is n_subspaces bytes (8-bit code per subspace).
+        # 128*4 / 8 = 64x compression.
         ratio = quantizer.get_compression_ratio()
-        assert ratio == 4.0  # 32-bit to 8-bit
+        assert ratio == 64.0
         
     def test_memory_pool(self):
         """Test memory pool"""
@@ -582,9 +584,9 @@ class TestPerformanceOptimizer:
         pool.return_vector_buffer(vec_buffer)
         pool.return_distance_buffer(dist_buffer)
         
-        # Check stats
+        # Check stats: pool started with 10, we took 1 and returned 1, so 10 available.
         stats = pool.get_stats()
-        assert stats["available_vectors"] == 1
+        assert stats["available_vectors"] == 10
         
     def test_query_optimizer(self):
         """Test query optimizer"""

@@ -5,9 +5,13 @@ Implements hierarchical clustering-based dialogue summarization and compression
 import numpy as np
 from typing import List, Dict, Any, Optional, Tuple
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 import json
+import math
+import logging
 from openai import AsyncOpenAI
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -189,9 +193,15 @@ class HierarchicalDialogueCompressor:
         
         # Time decay (recent turns get higher weight)
         time_weights = []
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         for turn in turns:
-            timestamp = datetime.fromisoformat(turn.get("timestamp", now.isoformat()))
+            ts = turn.get("timestamp", now.isoformat())
+            try:
+                timestamp = datetime.fromisoformat(ts)
+            except (ValueError, TypeError):
+                timestamp = now
+            if timestamp.tzinfo is None:
+                timestamp = timestamp.replace(tzinfo=timezone.utc)
             hours_ago = (now - timestamp).total_seconds() / 3600
             time_weight = math.exp(-hours_ago / 24)  # Decay over 24 hours
             time_weights.append(time_weight)
@@ -371,7 +381,7 @@ class HierarchicalDialogueCompressor:
         self.chunks = self._create_chunks_from_dialogue(dialogue)
         
         # Initialize embeddings if not provided
-        if embeddings:
+        if embeddings is not None:
             for i, chunk in enumerate(self.chunks):
                 if i < len(embeddings):
                     chunk.embedding = embeddings[i]
@@ -417,9 +427,6 @@ class HierarchicalDialogueCompressor:
             "avg_chunk_size": sum(len(c.turns) for c in self.chunks) / len(self.chunks),
             "avg_information_density": sum(c.information_density for c in self.chunks) / len(self.chunks)
         }
-
-
-import math
 
 
 class LLMEnhancedDialogueCompressor(HierarchicalDialogueCompressor):
@@ -499,23 +506,37 @@ class LLMEnhancedDialogueCompressor(HierarchicalDialogueCompressor):
         Summary:
         """
         
-        try:
-            response = await self.client.chat.completions.create(
-                model=self.compression_model,
-                messages=[
-                    {"role": "system", "content": "You are a helpful assistant that summarizes dialogues."},
-                    {"role": "user", "content": prompt.strip()}
-                ],
-                max_tokens=self.compression_max_tokens,
-                temperature=self.compression_temperature
-            )
+        # Retry with exponential backoff
+        max_retries = 3
+        delay = 1.0
+        
+        for attempt in range(max_retries):
+            try:
+                response = await self.client.chat.completions.create(
+                    model=self.compression_model,
+                    messages=[
+                        {"role": "system", "content": "You are a helpful assistant that summarizes dialogues."},
+                        {"role": "user", "content": prompt.strip()}
+                    ],
+                    max_tokens=self.compression_max_tokens,
+                    temperature=self.compression_temperature
+                )
+                
+                content = response.choices[0].message.content.strip()
+                if content:
+                    return content
+                    
+                logger.warning(f"Empty response received, attempt {attempt + 1}")
+            except Exception as e:
+                logger.warning(f"Summary generation failed on attempt {attempt + 1}: {e}")
             
-            return response.choices[0].message.content.strip()
-            
-        except Exception as e:
-            # Fallback: simple concatenation of key points
-            logger.error(f"Error generating summary: {e}")
-            return self._simple_summary(chunk)
+            if attempt < max_retries - 1:
+                import asyncio
+                await asyncio.sleep(delay)
+                delay *= 2
+        
+        logger.error(f"Failed to generate summary after {max_retries} attempts")
+        return self._simple_summary(chunk)
     
     def _simple_summary(self, chunk: DialogueChunk) -> str:
         """
@@ -656,8 +677,3 @@ class LLMEnhancedDialogueCompressor(HierarchicalDialogueCompressor):
         except Exception as e:
             logger.error(f"Error generating full summary: {e}")
             return chunk_summaries
-
-
-# Add logger import
-import logging
-logger = logging.getLogger(__name__)

@@ -44,20 +44,39 @@ const createWindow = () => {
 
 const startBackend = async () => {
   return new Promise((resolve, reject) => {
-    const backendPath = path.join(__dirname, '../../run_backend.py');
-    
-    if (!fs.existsSync(backendPath)) {
-      reject(new Error('Backend script not found: ' + backendPath));
+    // In dev: backend lives at <project>/run_backend.py and cwd is the project root.
+    // When packaged: backend source is copied under resources/backend/ by
+    // extraResources, and the SQLite/chroma data files must live somewhere
+    // writable (Program Files is read-only), so cwd is the userData dir.
+    let backendRoot, backendScript, cwd, pythonPath;
+    if (isDev) {
+      backendRoot = path.join(__dirname, '../../');
+      backendScript = path.join(backendRoot, 'run_backend.py');
+      cwd = backendRoot;
+      pythonPath = backendRoot;
+    } else {
+      backendRoot = path.join(process.resourcesPath, 'backend');
+      backendScript = path.join(backendRoot, 'run_backend.py');
+      // Writable working dir: userData. The backend's relative paths
+      // (./agents.db, ./data/agent_memory.db, ./data/chroma) land here.
+      // Program Files is read-only, so we can't use the install dir.
+      cwd = app.getPath('userData');
+      fs.mkdirSync(path.join(cwd, 'data'), { recursive: true });
+      pythonPath = backendRoot;
+    }
+
+    if (!fs.existsSync(backendScript)) {
+      reject(new Error('Backend script not found: ' + backendScript));
       return;
     }
 
     try {
-      backendProcess = spawn('python', [backendPath], {
-        cwd: path.join(__dirname, '../../'),
+      backendProcess = spawn('python', [backendScript], {
+        cwd: cwd,
         stdio: ['pipe', 'pipe', 'pipe'],
         env: {
           ...process.env,
-          PYTHONPATH: path.join(__dirname, '../../'),
+          PYTHONPATH: pythonPath,
         },
       });
 
@@ -86,7 +105,7 @@ const startBackend = async () => {
         if (!backendProcess) {
           reject(new Error('Backend startup timeout'));
         }
-      }, 10000);
+      }, 30000);
     } catch (err) {
       reject(err);
     }

@@ -38,7 +38,11 @@ class A2AAgent:
         self.openai_client = None
         self.conversation_history: List[Message] = []
         self.mcp_client = None
-        self.memory = AgentMemory(agent_id=agent_id)
+        self.memory = AgentMemory(
+            agent_id=agent_id,
+            chroma_persist_dir="./data/chroma" if config.rag_enabled else None,
+            entity_extraction_enabled=getattr(config, "entity_extraction_enabled", False),
+        )
         
     async def initialize(self, api_keys: Dict[str, Optional[str]] = None, base_urls: Dict[str, Optional[str]] = None):
         """Initialize the agent with appropriate client based on provider"""
@@ -142,6 +146,10 @@ class A2AAgent:
                         env=mcp_config.env
                     )
             
+            # Inject LLM client into RAG subsystem for entity/relation extraction
+            if self.openai_client is not None:
+                self.memory.set_llm_client(self.openai_client)
+
             # Initialize memory system
             await self.memory.initialize()
 

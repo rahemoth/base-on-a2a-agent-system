@@ -40,8 +40,8 @@ class MCPServerConfig(BaseModel):
 class CompressionConfig(BaseModel):
     """Configuration for context compression using small models"""
     enabled: bool = Field(False, description="Enable context compression")
-    provider: str = Field("openai", description="Compression model provider")
-    model: str = Field("gpt-4o-mini", description="Model to use for compression")
+    provider: str = Field("glm", description="Compression model provider")
+    model: str = Field("glm-4.5-air", description="Model to use for compression")
     api_key: Optional[str] = Field(None, description="API key for compression model (overrides global setting)")
     base_url: Optional[str] = Field(None, description="Base URL for compression API")
     max_tokens: int = Field(500, description="Maximum tokens for compression output")
@@ -75,6 +75,8 @@ class AgentConfig(BaseModel):
     # RAG and Memory Configuration
     rag_enabled: bool = Field(False, description="Enable RAG memory system")
     compression: CompressionConfig = Field(default_factory=CompressionConfig, description="Context compression configuration")
+    entity_extraction_enabled: bool = Field(False, description="Enable LLM-based entity/relation extraction for the memory graph")
+    entity_extraction_model: Optional[str] = Field(None, description="Model for entity/relation extraction (overrides global setting)")
 
     # Skill Configuration
     skills: List[str] = Field(default_factory=list, description="List of active skill IDs")

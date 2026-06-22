@@ -48,7 +48,8 @@ const MINIMAX_MODELS = [
 const GLM_MODELS = [
   { value: 'glm-5.1', label: 'GLM-5.1' },
   { value: 'glm-5', label: 'GLM-5' },
-  { value: 'glm-4.7', label: 'GLM-4.7' }
+  { value: 'glm-4.7', label: 'GLM-4.7' },
+  { value: 'glm-4.5-air', label: 'GLM-4.5-Air' }
 ];
 
 const QWEN_MODELS = [
@@ -879,7 +880,7 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
                   <label>压缩模型提供商 *</label>
                   <div className="magic-select">
                     <select
-                      value={config.compression?.provider || 'deepseek'}
+                      value={config.compression?.provider || 'glm'}
                       onChange={(e) => handleCompressionProviderChange(e.target.value)}
                     >
                       {Object.entries(PROVIDERS).map(([key, provider]) => (
@@ -899,7 +900,7 @@ const AgentConfigModal = ({ agent, onClose, onSave }) => {
                         <label>压缩模型 *</label>
                         <div className="magic-select">
                           <select
-                            value={config.compression?.model || compressionProvider.defaultModel}
+                            value={config.compression?.model || (config.compression?.provider === 'glm' ? 'glm-4.5-air' : compressionProvider.defaultModel)}
                             onChange={(e) => handleCompressionModelChange(e.target.value)}
                           >
                             {compressionProvider.models?.map(model => (

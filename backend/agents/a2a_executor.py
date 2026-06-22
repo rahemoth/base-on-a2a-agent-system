@@ -82,9 +82,18 @@ class LLMAgentExecutor(AgentExecutor):
         self.mcp_client = None
         
         # Initialize memory and cognitive systems
-        self.memory = AgentMemory(agent_id=agent_id)
+        self.memory = AgentMemory(
+            agent_id=agent_id,
+            chroma_persist_dir=settings.chroma_persist_dir if config.rag_enabled else None,
+            entity_extraction_enabled=getattr(config, "entity_extraction_enabled", False),
+            # Fall back to the agent's own model so extraction uses a model the
+            # configured provider actually supports (not a hardcoded gpt name).
+            entity_extraction_model=getattr(config, "entity_extraction_model", None) or config.model,
+            entity_extraction_max_tokens=settings.entity_extraction_max_tokens,
+            entity_extraction_temperature=settings.entity_extraction_temperature,
+        )
         self.cognitive = CognitiveProcessor(agent_id=agent_id, agent_name=config.name)
-        
+
         # Initialize enhanced tool manager (will be fully initialized in initialize_mcp)
         self.tool_manager = None
 
@@ -92,6 +101,11 @@ class LLMAgentExecutor(AgentExecutor):
         self.skill_manager = SkillManager()
 
         self._initialize_clients()
+        # Inject the LLM client into the RAG subsystem for entity/relation
+        # extraction. Done after _initialize_clients so openai_client is set.
+        # Gemini agents have no openai_client; extraction gracefully no-ops.
+        if self.openai_client is not None:
+            self.memory.set_llm_client(self.openai_client)
     
     def _initialize_clients(self):
         """Initialize LLM clients based on configuration"""

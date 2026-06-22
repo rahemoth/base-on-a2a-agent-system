@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "description": "A2A Multi-Agent Collaboration System Desktop App",
+  "author": "agent-system",
   "main": "electron/main.js",
   "scripts": {
     "dev": "vite",
@@ -42,6 +43,15 @@
       "electron/**/*",
       "node_modules/**/*"
     ],
+    "extraResources": [
+      { "from": "../run_backend.py", "to": "backend/run_backend.py" },
+      { "from": "../backend", "to": "backend/backend" },
+      { "from": "../requirements.txt", "to": "backend/requirements.txt" },
+      { "from": "../.env.example", "to": "backend/.env.example" }
+    ],
+    "extraMetadata": {
+      "main": "electron/main.js"
+    },
     "win": {
       "target": [
         {
